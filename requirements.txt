@@ -1,0 +1,8 @@
+torch>=2.1
+torch_geometric>=2.4
+torchvision            # VGG16 features for PascalVOC-Keypoints (dataset processing only)
+scipy                  # T.Delaunay, results/analyze.py
+numpy
+plyfile                # FAUST .ply reader (PyG's needs openmesh)
+pytest                 # tests/
+# optional: wandb      # --wandb logging in the experiment scripts

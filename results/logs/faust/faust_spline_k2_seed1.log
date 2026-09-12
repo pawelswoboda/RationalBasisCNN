@@ -1,0 +1,146 @@
+Net with 1953898 parameters
+BSplineConv(1, 32, dim=3, kernel_size=[2, 2, 2])
+wandb: Currently logged in as: pswoboda to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run 7awwtevd
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in /home/pswoboda/repo/deep-graph-matching-consensus/.claude/worktrees/spline-improve/benchmarks/wandb/wandb/run-20260829_220328-7awwtevd
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run faust_faust_spline_k2_seed1
+wandb: ⭐️ View project at https://wandb.ai/pswoboda/dgmc-rational
+wandb: 🚀 View run at https://wandb.ai/pswoboda/dgmc-rational/runs/7awwtevd
+Epoch: 001, Loss: 9.7679, Train: 0.0003, Time: 1.8s, Test: 0.0002, Test loss: 9.3565
+Epoch: 002, Loss: 8.8185, Train: 0.0006, Time: 1.0s, Test: 0.0015, Test loss: 8.0463
+Epoch: 003, Loss: 8.3300, Train: 0.0008, Time: 1.0s, Test: 0.0011, Test loss: 8.0070
+Epoch: 004, Loss: 8.1621, Train: 0.0008, Time: 1.0s, Test: 0.0012, Test loss: 7.9821
+Epoch: 005, Loss: 8.1329, Train: 0.0009, Time: 1.0s, Test: 0.0011, Test loss: 8.0381
+Epoch: 006, Loss: 8.2080, Train: 0.0010, Time: 1.0s, Test: 0.0012, Test loss: 7.8361
+Epoch: 007, Loss: 8.0450, Train: 0.0011, Time: 1.0s, Test: 0.0014, Test loss: 7.8230
+Epoch: 008, Loss: 7.9600, Train: 0.0011, Time: 1.0s, Test: 0.0021, Test loss: 7.7271
+Epoch: 009, Loss: 7.8805, Train: 0.0011, Time: 1.0s, Test: 0.0003, Test loss: 17.0479
+Epoch: 010, Loss: 9.2492, Train: 0.0007, Time: 1.0s, Test: 0.0009, Test loss: 8.0219
+Epoch: 011, Loss: 9.1684, Train: 0.0008, Time: 1.0s, Test: 0.0003, Test loss: 9.7502
+Epoch: 012, Loss: 8.6586, Train: 0.0007, Time: 1.0s, Test: 0.0004, Test loss: 8.5290
+Epoch: 013, Loss: 8.5612, Train: 0.0008, Time: 1.0s, Test: 0.0018, Test loss: 7.8911
+Epoch: 014, Loss: 8.2666, Train: 0.0009, Time: 1.0s, Test: 0.0006, Test loss: 8.1234
+Epoch: 015, Loss: 8.2088, Train: 0.0008, Time: 1.0s, Test: 0.0009, Test loss: 7.9626
+Epoch: 016, Loss: 8.1818, Train: 0.0009, Time: 1.0s, Test: 0.0016, Test loss: 7.8879
+Epoch: 017, Loss: 8.1534, Train: 0.0009, Time: 1.0s, Test: 0.0005, Test loss: 8.1081
+Epoch: 018, Loss: 8.1336, Train: 0.0009, Time: 1.0s, Test: 0.0011, Test loss: 7.8702
+Epoch: 019, Loss: 8.1062, Train: 0.0010, Time: 1.0s, Test: 0.0016, Test loss: 7.7830
+Epoch: 020, Loss: 8.1020, Train: 0.0009, Time: 1.0s, Test: 0.0006, Test loss: 8.2471
+Epoch: 021, Loss: 8.0901, Train: 0.0010, Time: 1.0s, Test: 0.0017, Test loss: 7.7795
+Epoch: 022, Loss: 8.0680, Train: 0.0010, Time: 1.0s, Test: 0.0023, Test loss: 7.6685
+Epoch: 023, Loss: 8.0917, Train: 0.0011, Time: 1.0s, Test: 0.0007, Test loss: 8.0422
+Epoch: 024, Loss: 8.0503, Train: 0.0010, Time: 1.0s, Test: 0.0012, Test loss: 7.7301
+Epoch: 025, Loss: 8.0156, Train: 0.0010, Time: 1.0s, Test: 0.0028, Test loss: 7.5946
+Epoch: 026, Loss: 8.0256, Train: 0.0011, Time: 1.0s, Test: 0.0005, Test loss: 8.3155
+Epoch: 027, Loss: 7.9902, Train: 0.0012, Time: 1.0s, Test: 0.0022, Test loss: 7.6166
+Epoch: 028, Loss: 7.9825, Train: 0.0011, Time: 1.0s, Test: 0.0030, Test loss: 7.5146
+Epoch: 029, Loss: 7.9801, Train: 0.0011, Time: 1.0s, Test: 0.0010, Test loss: 8.0495
+Epoch: 030, Loss: 7.9306, Train: 0.0011, Time: 1.0s, Test: 0.0016, Test loss: 7.5717
+Epoch: 031, Loss: 7.9247, Train: 0.0012, Time: 1.0s, Test: 0.0015, Test loss: 7.5463
+Epoch: 032, Loss: 7.9006, Train: 0.0013, Time: 1.0s, Test: 0.0007, Test loss: 8.1905
+Epoch: 033, Loss: 7.9051, Train: 0.0012, Time: 1.0s, Test: 0.0015, Test loss: 7.6039
+Epoch: 034, Loss: 7.8739, Train: 0.0012, Time: 1.0s, Test: 0.0031, Test loss: 7.4632
+Epoch: 035, Loss: 7.8734, Train: 0.0013, Time: 1.0s, Test: 0.0006, Test loss: 7.8786
+Epoch: 036, Loss: 7.8561, Train: 0.0013, Time: 1.0s, Test: 0.0018, Test loss: 7.5128
+Epoch: 037, Loss: 7.8554, Train: 0.0012, Time: 1.0s, Test: 0.0026, Test loss: 7.4100
+Epoch: 038, Loss: 7.8470, Train: 0.0012, Time: 1.0s, Test: 0.0005, Test loss: 8.1045
+Epoch: 039, Loss: 7.8436, Train: 0.0012, Time: 1.0s, Test: 0.0013, Test loss: 7.5177
+Epoch: 040, Loss: 7.8342, Train: 0.0013, Time: 1.0s, Test: 0.0041, Test loss: 7.3754
+Epoch: 041, Loss: 7.8259, Train: 0.0012, Time: 1.0s, Test: 0.0011, Test loss: 8.1613
+Epoch: 042, Loss: 7.8259, Train: 0.0013, Time: 1.0s, Test: 0.0015, Test loss: 7.4584
+Epoch: 043, Loss: 7.8006, Train: 0.0013, Time: 1.0s, Test: 0.0028, Test loss: 7.3939
+Epoch: 044, Loss: 7.7903, Train: 0.0013, Time: 1.0s, Test: 0.0012, Test loss: 8.0039
+Epoch: 045, Loss: 7.7942, Train: 0.0013, Time: 1.0s, Test: 0.0019, Test loss: 7.4281
+Epoch: 046, Loss: 7.7776, Train: 0.0013, Time: 1.0s, Test: 0.0026, Test loss: 7.3031
+Epoch: 047, Loss: 7.7822, Train: 0.0013, Time: 1.0s, Test: 0.0009, Test loss: 8.0400
+Epoch: 048, Loss: 7.7793, Train: 0.0014, Time: 1.0s, Test: 0.0010, Test loss: 7.7921
+Epoch: 049, Loss: 7.8015, Train: 0.0013, Time: 1.0s, Test: 0.0019, Test loss: 7.2865
+Epoch: 050, Loss: 7.7710, Train: 0.0012, Time: 1.0s, Test: 0.0003, Test loss: 7.8537
+Epoch: 051, Loss: 7.7424, Train: 0.0013, Time: 1.0s, Test: 0.0020, Test loss: 7.3683
+Epoch: 052, Loss: 7.7772, Train: 0.0013, Time: 1.0s, Test: 0.0025, Test loss: 7.3066
+Epoch: 053, Loss: 7.7414, Train: 0.0014, Time: 1.0s, Test: 0.0007, Test loss: 8.0577
+Epoch: 054, Loss: 7.7433, Train: 0.0013, Time: 1.0s, Test: 0.0027, Test loss: 7.3693
+Epoch: 055, Loss: 7.7244, Train: 0.0014, Time: 1.0s, Test: 0.0028, Test loss: 7.2362
+Epoch: 056, Loss: 7.7204, Train: 0.0013, Time: 1.0s, Test: 0.0003, Test loss: 7.9368
+Epoch: 057, Loss: 7.7241, Train: 0.0014, Time: 1.0s, Test: 0.0028, Test loss: 7.3450
+Epoch: 058, Loss: 7.7069, Train: 0.0013, Time: 1.0s, Test: 0.0023, Test loss: 7.2187
+Epoch: 059, Loss: 7.7022, Train: 0.0014, Time: 1.0s, Test: 0.0009, Test loss: 7.9718
+Epoch: 060, Loss: 7.7117, Train: 0.0013, Time: 1.0s, Test: 0.0025, Test loss: 7.3132
+Epoch: 061, Loss: 7.2676, Train: 0.0025, Time: 1.0s, Test: 0.0047, Test loss: 7.0146
+Epoch: 062, Loss: 7.1519, Train: 0.0026, Time: 1.0s, Test: 0.0054, Test loss: 6.9610
+Epoch: 063, Loss: 7.1029, Train: 0.0028, Time: 1.0s, Test: 0.0050, Test loss: 6.9277
+Epoch: 064, Loss: 7.0646, Train: 0.0029, Time: 1.0s, Test: 0.0058, Test loss: 6.9055
+Epoch: 065, Loss: 7.0373, Train: 0.0029, Time: 1.0s, Test: 0.0064, Test loss: 6.8748
+Epoch: 066, Loss: 7.0140, Train: 0.0031, Time: 1.0s, Test: 0.0063, Test loss: 6.8608
+Epoch: 067, Loss: 6.9938, Train: 0.0031, Time: 1.0s, Test: 0.0064, Test loss: 6.8488
+Epoch: 068, Loss: 6.9764, Train: 0.0031, Time: 1.0s, Test: 0.0062, Test loss: 6.8273
+Epoch: 069, Loss: 6.9606, Train: 0.0029, Time: 1.0s, Test: 0.0063, Test loss: 6.8164
+Epoch: 070, Loss: 6.9459, Train: 0.0031, Time: 1.0s, Test: 0.0067, Test loss: 6.8022
+Epoch: 071, Loss: 6.9340, Train: 0.0032, Time: 1.0s, Test: 0.0069, Test loss: 6.7904
+Epoch: 072, Loss: 6.9213, Train: 0.0033, Time: 1.0s, Test: 0.0073, Test loss: 6.7827
+Epoch: 073, Loss: 6.9111, Train: 0.0033, Time: 1.0s, Test: 0.0074, Test loss: 6.7719
+Epoch: 074, Loss: 6.8991, Train: 0.0033, Time: 1.0s, Test: 0.0069, Test loss: 6.7598
+Epoch: 075, Loss: 6.8892, Train: 0.0034, Time: 1.0s, Test: 0.0071, Test loss: 6.7537
+Epoch: 076, Loss: 6.8798, Train: 0.0034, Time: 1.0s, Test: 0.0073, Test loss: 6.7449
+Epoch: 077, Loss: 6.8674, Train: 0.0035, Time: 1.0s, Test: 0.0090, Test loss: 6.7166
+Epoch: 078, Loss: 6.8551, Train: 0.0041, Time: 1.0s, Test: 0.0069, Test loss: 6.7093
+Epoch: 079, Loss: 6.8327, Train: 0.0044, Time: 1.0s, Test: 0.0099, Test loss: 6.6228
+Epoch: 080, Loss: 6.7446, Train: 0.0057, Time: 1.0s, Test: 0.0082, Test loss: 6.6158
+Epoch: 081, Loss: 6.7077, Train: 0.0062, Time: 1.0s, Test: 0.0107, Test loss: 6.5191
+Epoch: 082, Loss: 6.7091, Train: 0.0061, Time: 1.0s, Test: 0.0098, Test loss: 6.5127
+Epoch: 083, Loss: 6.6347, Train: 0.0071, Time: 1.0s, Test: 0.0139, Test loss: 6.4264
+Epoch: 084, Loss: 6.5449, Train: 0.0082, Time: 1.0s, Test: 0.0137, Test loss: 6.3698
+Epoch: 085, Loss: 6.4786, Train: 0.0092, Time: 1.0s, Test: 0.0163, Test loss: 6.2679
+Epoch: 086, Loss: 6.4428, Train: 0.0099, Time: 1.0s, Test: 0.0179, Test loss: 6.2174
+Epoch: 087, Loss: 6.3739, Train: 0.0108, Time: 1.0s, Test: 0.0198, Test loss: 6.1966
+Epoch: 088, Loss: 6.3705, Train: 0.0110, Time: 1.0s, Test: 0.0246, Test loss: 6.1638
+Epoch: 089, Loss: 6.3381, Train: 0.0114, Time: 1.0s, Test: 0.0220, Test loss: 6.1316
+Epoch: 090, Loss: 6.2930, Train: 0.0123, Time: 1.0s, Test: 0.0280, Test loss: 6.0861
+Epoch: 091, Loss: 6.2787, Train: 0.0126, Time: 1.0s, Test: 0.0221, Test loss: 6.1176
+Epoch: 092, Loss: 6.2700, Train: 0.0126, Time: 1.0s, Test: 0.0300, Test loss: 6.0591
+Epoch: 093, Loss: 6.2420, Train: 0.0134, Time: 1.0s, Test: 0.0338, Test loss: 6.0396
+Epoch: 094, Loss: 6.2173, Train: 0.0142, Time: 1.0s, Test: 0.0310, Test loss: 6.0283
+Epoch: 095, Loss: 6.2040, Train: 0.0144, Time: 1.0s, Test: 0.0301, Test loss: 6.0263
+Epoch: 096, Loss: 6.2103, Train: 0.0139, Time: 1.0s, Test: 0.0235, Test loss: 6.0739
+Epoch: 097, Loss: 6.1903, Train: 0.0146, Time: 1.0s, Test: 0.0383, Test loss: 5.9914
+Epoch: 098, Loss: 6.2069, Train: 0.0144, Time: 1.0s, Test: 0.0289, Test loss: 6.0149
+Epoch: 099, Loss: 6.1628, Train: 0.0156, Time: 1.0s, Test: 0.0308, Test loss: 6.0138
+Epoch: 100, Loss: 6.1498, Train: 0.0160, Time: 1.0s, Test: 0.0377, Test loss: 5.9628
+Final test accuracy: 3.77 (best 3.83)
+wandb: updating run metadata
+wandb: uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 91-99, summary, console lines 91-100
+wandb: 
+wandb: Run history:
+wandb:         opt/grad_norm ▁███▇███████████████████████████████████
+wandb:     opt/grad_norm_max ▅▁▁▅▅▅▅▅▅▅▅▅▅▅▅▅█▅▅█▅▅▅▅▁▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅
+wandb:     opt/grad_norm_raw ▂▁▂▃▃▃▄▂▂▃▃▄▅▅▆▇▇▇▇▇███▁▂▂▂▂▃▃▅█▆▇█▅▇▆█▆
+wandb: opt/grad_norm_raw_max ▃▂▃▂▂▁▂▃▃▄▄▄▄▅▄▅▅▅▅▅▆▆▆▆▆▆▆▁▁▁▂▂▂▂▃█▆▆▅█
+wandb:                opt/lr █████████████████████████▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:        opt/param_norm ▁▂▂▃▃▃▃▃▄▄▄▄▅▅▅▅▅▅▅▅▆▆▆▆▆▆▆▆▇▇▇▇▇▇██████
+wandb:       opt/update_norm █▅▄▃▂▆▄▅▄▄▄▄▄▄▄▄▄▄▄▄▄▄▅▄▄▄▅▁▁▁▁▁▁▁▁▁▁▁▂▁
+wandb:   opt/update_norm_max █▂▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:      opt/update_ratio █▇▇▄▄▇▆▆▆▆▅▅▅▅▅▅▅▅▅▅▅▅▃▂▁▁▁▁▁▁▂▁▁▁▁▂▁▁▁▁
+wandb:              test/acc ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▁▂▁▁▁▁▁▁▁▁▁▂▂▂▂▂▃▄▅▇█
+wandb:                    +6 ...
+wandb: 
+wandb: Run summary:
+wandb:              best_acc 3.83454
+wandb:             final_acc 3.76778
+wandb:         opt/grad_norm 1
+wandb:     opt/grad_norm_max 1.0
+wandb:     opt/grad_norm_raw 41.81894
+wandb: opt/grad_norm_raw_max 109.12262
+wandb:                opt/lr 0.001
+wandb:        opt/param_norm 255.37704
+wandb:       opt/update_norm 0.25204
+wandb:   opt/update_norm_max 0.52727
+wandb:                    +8 ...
+wandb: 
+wandb: 🚀 View run faust_faust_spline_k2_seed1 at: https://wandb.ai/pswoboda/dgmc-rational/runs/7awwtevd
+wandb: ⭐️ View project at: https://wandb.ai/pswoboda/dgmc-rational
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /home/pswoboda/repo/deep-graph-matching-consensus/.claude/worktrees/spline-improve/benchmarks/wandb/wandb/run-20260829_220328-7awwtevd/logs
+DONE
