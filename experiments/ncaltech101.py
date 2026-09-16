@@ -61,6 +61,10 @@ parser.add_argument('--root', type=str, default=osp.join(ROOT, 'data'))
 parser.add_argument('--train_samples', type=int, default=0,
                     help='use only the first n training samples (smoke test)')
 parser.add_argument('--eval_every', type=int, default=1)
+parser.add_argument('--augment', action='store_true',
+                    help='training augmentation: random horizontal flip and '
+                    'random translation by up to 10%% of the image size '
+                    '(not in AEGNN; the released pipeline has none)')
 parser.add_argument('--profile', type=int, default=0,
                     help='time N training batches (graph / forward / '
                     'backward) and exit')
@@ -135,12 +139,20 @@ def radius_graph_nearest(pos, batch, r, k, num_graphs):
     return torch.stack([torch.cat(src), torch.cat(dst)])
 
 
-def make_batch(data, idx):
+def make_batch(data, idx, augment=False):
     pos_all, x_all, y_all = data
     B = idx.numel()
     pos = pos_all[idx].view(-1, 3)
     x = x_all[idx].view(-1, 1).float()
     batch = torch.arange(B, device=device).repeat_interleave(n_events)
+    if augment:
+        W, H = IMG_SHAPE
+        pos = pos.clone()
+        flip = (torch.rand(B, device=device) < 0.5)[batch]
+        pos[flip, 0] = (W - 1) - pos[flip, 0]
+        shift = (torch.rand(B, 2, device=device) * 2 - 1) * \
+            pos.new_tensor([0.1 * W, 0.1 * H])
+        pos[:, :2] = pos[:, :2] + shift[batch]
     if args.graph == 'cluster':
         from torch_cluster import radius_graph
         edge_index = radius_graph(pos, r=args.radius, batch=batch, loop=False,
@@ -177,7 +189,7 @@ def train_epoch():
         idx = perm[s:s + args.batch_size]
         if idx.numel() < 2:
             continue  # BatchNorm
-        data = make_batch(train, idx)
+        data = make_batch(train, idx, augment=args.augment)
         optimizer.zero_grad()
         out = model(data)
         loss = F.cross_entropy(out, data.y)
