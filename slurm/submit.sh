@@ -2,10 +2,11 @@
 # Submits one slurm job per (config, seed).
 # Usage: slurm/submit.sh voc   [configs...]   (default: the PascalVOC configs of the paper, seeds 0-4)
 #        slurm/submit.sh faust [configs...]   (default: the FAUST configs of the paper, seeds 0-2)
+#        slurm/submit.sh ncal  [configs...]   (default: the N-Caltech101/AEGNN configs, seeds 0-2)
 # Env: SEEDS="0 1 2" overrides the seed list; PYTHON, WANDB, EPOCHS are passed through.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
-WHAT="${1:?usage: slurm/submit.sh voc|faust [configs...]}"; shift || true
+WHAT="${1:?usage: slurm/submit.sh voc|faust|ncal [configs...]}"; shift || true
 mkdir -p slurm/logs
 case "$WHAT" in
   voc)
@@ -14,6 +15,9 @@ case "$WHAT" in
   faust)
     CONFIGS=("$@"); [ ${#CONFIGS[@]} -eq 0 ] && CONFIGS=(faust_mv_K8 faust_mv_K4 faust_rational_k3 faust_mv_K4_mean faust_spline_mean faust_mlp_K8 faust_spline faust_spline_k3 faust_mv_K16 faust_mv_K27 faust_spline_noclip faust_spline_k2)
     SEEDS=(${SEEDS:-0 1 2}); SBATCH=slurm/faust.sbatch ;;
+  ncal)
+    CONFIGS=("$@"); [ ${#CONFIGS[@]} -eq 0 ] && CONFIGS=(ncal_spline ncal_mv_K8 ncal_mv_K4 ncal_mv_K16 ncal_mv_K8_d54 ncal_pointnet ncal_mlp_K8 ncal_spline_k3 ncal_rational_k2)
+    SEEDS=(${SEEDS:-0 1 2}); SBATCH=slurm/ncaltech101.sbatch ;;
   *) echo "unknown target '$WHAT'" >&2; exit 1 ;;
 esac
 source slurm/configs.sh

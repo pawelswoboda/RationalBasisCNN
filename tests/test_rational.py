@@ -386,3 +386,35 @@ def test_product_basis_accepts_num_bases_none():
     with pytest.raises(AssertionError):
         RationalConv(4, 8, dim=3, kernel_size=3, basis='product', num_bases=4,
                      fit_steps=5)
+
+
+def test_large_graph_path_matches_dense():
+    from rational_cnn import BSplineConv, RationalConv
+    torch.manual_seed(0)
+    N, E = 100, 1500
+    x = torch.randn(N, 8, dtype=torch.double)
+    edge_index = torch.randint(0, N, (2, E))
+    u = torch.rand(E, 3, dtype=torch.double)
+    for make in [
+            lambda large: BSplineConv(8, 12, 3, 2, large=large),
+            lambda large: RationalConv(8, 12, 3, 2, basis='multivariate',
+                                       num_bases=6, init='pca',
+                                       degrees=(4, 3), large=large),
+            lambda large: RationalConv(8, 4, 3, 2, basis='multivariate',
+                                       num_bases=6, init='pca',
+                                       degrees=(4, 3), aggr='add',
+                                       large=large)]:
+        torch.manual_seed(1)
+        dense = make(False).double()
+        torch.manual_seed(1)
+        large = make(True).double()
+        large.load_state_dict(dense.state_dict())
+        xa, xb = x.clone().requires_grad_(), x.clone().requires_grad_()
+        ya, yb = dense(xa, edge_index, u), large(xb, edge_index, u)
+        assert torch.allclose(ya, yb, atol=1e-10)
+        ya.sum().backward()
+        yb.sum().backward()
+        assert torch.allclose(xa.grad, xb.grad, atol=1e-10)
+        for pa, pb in zip(dense.parameters(), large.parameters()):
+            if pa.grad is not None:
+                assert torch.allclose(pa.grad, pb.grad, atol=1e-9)

@@ -38,6 +38,18 @@ config_args() {
     faust_mv_K27) echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 27" ;;
     faust_mv_K4_mean) echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 4 --aggr mean" ;;
     faust_mlp_K8) echo "--backbone rational --rational_basis mlp --vp --num_bases 8" ;;
+    # ---- N-Caltech101 / AEGNN (experiments/ncaltech101.py, 3-D pseudo-coordinates, k=2) ----
+    ncal_pyg_spline)  echo "--backbone pyg_spline" ;;   # AEGNN as released (torch_spline_conv)
+    ncal_spline)      echo "--backbone spline" ;;       # same operator, our implementation (K=8)
+    ncal_spline_k3)   echo "--backbone spline --kernel_size 3" ;;  # K=27
+    ncal_mv_K4)   echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 4" ;;
+    ncal_mv_K8)   echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8" ;;
+    ncal_mv_K16)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 16" ;;
+    ncal_mv_K8_d54) echo "--backbone rational --rational_basis multivariate --degrees 5 4 --init pca --vp --num_bases 8" ;;
+    ncal_mv_K4_d54) echo "--backbone rational --rational_basis multivariate --degrees 5 4 --init pca --vp --num_bases 4" ;;
+    ncal_rational_k2) echo "--backbone rational --kernel_size 2" ;;  # product basis, spline init, K=8
+    ncal_mlp_K8)  echo "--backbone rational --rational_basis mlp --vp --num_bases 8" ;;
+    ncal_pointnet) echo "--backbone pointnet" ;;        # Jeziorek et al. 2023 replacement
     *) echo "unknown config '$1'" >&2; return 1 ;;
   esac
 }

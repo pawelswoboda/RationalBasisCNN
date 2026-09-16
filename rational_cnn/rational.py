@@ -8,6 +8,7 @@ from torch_geometric.nn import MessagePassing
 from torch_geometric.nn.inits import uniform
 
 from .bspline import open_bspline_basis_1d, bspline_basis
+from .large import basis_conv, chunked_basis
 
 
 def poly_features(t, degree, poly='chebyshev'):
@@ -71,14 +72,15 @@ def multivariate_poly_features(t, indices, poly='chebyshev'):
     tensor of shape :obj:`[..., len(indices)]`."""
     dim = t.size(-1)
     degree = max(max(a) for a in indices)
-    phi = [poly_features(t[..., d], degree, poly) for d in range(dim)]
-    feats = []
-    for a in indices:
-        f = phi[0][..., a[0]]
-        for d in range(1, dim):
-            f = f * phi[d][..., a[d]]
-        feats.append(f)
-    return torch.stack(feats, dim=-1)
+    # [..., dim, degree + 1] one-dimensional features, then one gather per
+    # dimension (vectorised over the multi-indices).
+    phi = torch.stack([poly_features(t[..., d], degree, poly)
+                       for d in range(dim)], dim=-2)
+    idx = torch.tensor(indices, device=t.device, dtype=torch.long)
+    out = phi[..., 0, :].index_select(-1, idx[:, 0])
+    for d in range(1, dim):
+        out = out * phi[..., d, :].index_select(-1, idx[:, d])
+    return out
 
 
 def gauss_basis_1d(u, kernel_size, width=0.5):
@@ -621,9 +623,10 @@ class RationalConv(MessagePassing):
     """
     def __init__(self, in_channels, out_channels, dim, kernel_size,
                  root_weight=True, bias=True, basis='product', vp=False,
-                 aggr='mean', pyg_init=False, **kwargs):
+                 aggr='mean', pyg_init=False, large=False, **kwargs):
         super(RationalConv, self).__init__(aggr=aggr, node_dim=0)
         self.pyg_init = pyg_init
+        self.large = large
 
         assert basis in ['product', 'multivariate', 'mlp']
         self.in_channels = in_channels
@@ -678,9 +681,14 @@ class RationalConv(MessagePassing):
         """"""
         N, K, C_in, C_out = x.size(0), self.num_bases, self.in_channels, \
             self.out_channels
-        R = self.basis(pseudo)  # [E, K]
+        R = chunked_basis(self.basis, pseudo) if self.large else \
+            self.basis(pseudo)  # [E, K]
 
-        if C_out <= C_in:
+        if self.large:
+            # Basis-first aggregation, O(E C_in) transient memory (see
+            # rational_cnn.large), for graphs with ~1e7 edges.
+            out = basis_conv(R, x, edge_index, self.weight, aggr=self.aggr)
+        elif C_out <= C_in:
             # Transform node features by all K weight matrices, then combine
             # per edge: memory E * K * C_out.
             xw = x @ self.weight.permute(1, 0, 2).reshape(C_in, -1)

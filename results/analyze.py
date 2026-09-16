@@ -4,7 +4,7 @@ paper draft:  python results/analyze.py
 PascalVOC: per-seed final/best mean-over-categories accuracy (last epoch),
 Welch t-tests between the configurations discussed in the paper.
 FAUST: per-seed final/best vertex accuracy from the 'Final test accuracy'
-line."""
+line. N-Caltech101 (AEGNN): same format, classification accuracy."""
 import glob
 import os.path as osp
 import re
@@ -103,31 +103,62 @@ welch(voc, [('rational_mv_k3', 'spline'), ('rational_mv_k3', 'rational_k3'),
             ('rational', 'spline'), ('rational_k3', 'spline_k3')],
       lambda r: r['final'][-1])
 
-# -------------------------------------------------------------------- FAUST
-print('\n' + '=' * 78)
-print('FAUST shape correspondence (exact vertex accuracy, 100 epochs)')
-fa = defaultdict(list)
-for f in sorted(glob.glob(osp.join(LOGS, 'faust', '*_seed*.log'))):
-    cfg = re.match(r'.*/(.*)_seed(\d+)\.log', f).group(1)
-    txt = open(f).read()
-    m = re.search(r'Final test accuracy: ([\d.]+) \(best ([\d.]+)\)', txt)
-    if not m:
-        continue
-    params = re.search(r'(\d+) parameters', txt)
-    fa[cfg].append(dict(final=float(m.group(1)), best=float(m.group(2)),
-                        params=int(params.group(1)) if params else 0))
-print(f"{'config':26s} {'params':>8s} {'seeds':>5s} {'final acc':>14s} "
-      f"{'best acc':>14s}  per-seed")
-for cfg, rows in sorted(fa.items(),
-                        key=lambda kv: -np.mean([r['final'] for r in kv[1]])):
-    fin = np.array([r['final'] for r in rows])
-    best = np.array([r['best'] for r in rows])
-    print(f"{cfg:26s} {rows[0]['params']:8d} {len(rows):5d} "
-          f"{fin.mean():7.2f} ± {sd(fin):4.2f} {best.mean():7.2f} ± "
-          f"{sd(best):4.2f}  " + ' '.join(f'{v:5.2f}' for v in fin))
-print('\nWelch t-tests (final acc):')
-welch(fa, [('faust_mv_K8', 'faust_spline_mean'), ('faust_mv_K4', 'faust_spline_mean'),
-           ('faust_mv_K8', 'faust_mlp_K8'), ('faust_mv_K8', 'faust_spline'),
-           ('faust_spline_mean', 'faust_spline'),
-           ('faust_spline_pyginit', 'faust_spline'),
-           ('faust_mv_K4', 'faust_mv_K4_mean')], lambda r: r['final'])
+# ------------------------------------------------- FAUST / N-Caltech101
+
+
+def summarize(subdir, title, tests):
+    r"""Per-seed 'Final test accuracy: x (best y)' logs (FAUST vertex
+    accuracy, N-Caltech101 classification accuracy) -> table + t-tests."""
+    print('\n' + '=' * 78)
+    print(title)
+    res = defaultdict(list)
+    partial = []
+    for f in sorted(glob.glob(osp.join(LOGS, subdir, '*_seed*.log'))):
+        cfg = re.match(r'.*/(.*)_seed(\d+)\.log', f).group(1)
+        txt = open(f).read()
+        m = re.search(r'Final test accuracy: ([\d.]+) \(best ([\d.]+)\)', txt)
+        if not m:
+            partial.append(osp.basename(f))
+            continue
+        params = re.search(r'(\d+) parameters', txt)
+        conv = re.search(r'\((\d+) in convolutions\)', txt)
+        res[cfg].append(dict(final=float(m.group(1)), best=float(m.group(2)),
+                             params=int(params.group(1)) if params else 0,
+                             conv=int(conv.group(1)) if conv else 0))
+    if partial:
+        print('incomplete runs (excluded):', partial)
+    has_conv = any(r['conv'] for rows in res.values() for r in rows)
+    print(f"{'config':26s} {'params':>8s} " + (f"{'conv':>7s} " if has_conv
+          else '') + f"{'seeds':>5s} {'final acc':>14s} {'best acc':>14s}  "
+          "per-seed")
+    for cfg, rows in sorted(res.items(),
+                            key=lambda kv: -np.mean([r['final']
+                                                     for r in kv[1]])):
+        fin = np.array([r['final'] for r in rows])
+        best = np.array([r['best'] for r in rows])
+        print(f"{cfg:26s} {rows[0]['params']:8d} " +
+              (f"{rows[0]['conv']:7d} " if has_conv else '') +
+              f"{len(rows):5d} {fin.mean():7.2f} ± {sd(fin):4.2f} "
+              f"{best.mean():7.2f} ± {sd(best):4.2f}  " +
+              ' '.join(f'{v:5.2f}' for v in fin))
+    print('\nWelch t-tests (final acc):')
+    welch(res, tests, lambda r: r['final'])
+    return res
+
+
+fa = summarize('faust', 'FAUST shape correspondence (exact vertex accuracy, '
+               '100 epochs)',
+               [('faust_mv_K8', 'faust_spline_mean'),
+                ('faust_mv_K4', 'faust_spline_mean'),
+                ('faust_mv_K8', 'faust_mlp_K8'), ('faust_mv_K8', 'faust_spline'),
+                ('faust_spline_mean', 'faust_spline'),
+                ('faust_spline_pyginit', 'faust_spline'),
+                ('faust_mv_K4', 'faust_mv_K4_mean')])
+
+nc = summarize('ncaltech101', 'N-Caltech101 object recognition (AEGNN '
+               'recognition network, test accuracy, 30 epochs)',
+               [('ncal_mv_K8', 'ncal_spline'), ('ncal_mv_K4', 'ncal_spline'),
+                ('ncal_mv_K16', 'ncal_spline'), ('ncal_mv_K8_d54', 'ncal_spline'),
+                ('ncal_mv_K8', 'ncal_pointnet'), ('ncal_mv_K8', 'ncal_mlp_K8'),
+                ('ncal_spline', 'ncal_pyg_spline'), ('ncal_spline', 'ncal_pointnet'),
+                ('ncal_rational_k2', 'ncal_spline'), ('ncal_spline_k3', 'ncal_spline')])
