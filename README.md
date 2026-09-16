@@ -7,7 +7,10 @@ basis functions**, evaluated on
 
 * **PascalVOC-Keypoints** graph matching with Deep Graph Matching Consensus
   (DGMC, Fey et al., ICLR 2020), and
-* **FAUST** shape correspondence (the SplineCNN reference task).
+* **FAUST** shape correspondence (the SplineCNN reference task), and
+* **N-Caltech101** event-camera object recognition with the AEGNN network
+  (Schaefer et al., CVPR 2022), whose SplineConv layers are the operator's
+  main application in event-based vision.
 
 Every layer computes the SplineConv operator
 `x'_i = Θ_root x_i + □_{j∈N(i)} (Σ_p B_p(u_ij) Θ_p) x_j + b`; only the basis
@@ -24,6 +27,7 @@ rational_cnn/            the package
                          (total-degree polynomials in all D coordinates, free K), MLPBasis (control),
                          RationalConv, RationalCNN; hat-fit / PCA-of-hats / vp initialization
   bspline.py             BSplineConv: pure-PyTorch SplineConv (no torch-spline-conv needed)
+  large.py               basis-first aggregation for graphs with ~1e7 edges (large=True in both convs)
   spline_cnn.py          SplineCNN backbone stack (DGMC ψ networks)
   dgmc.py, data.py       DGMC model and pair datasets (from rusty1s/deep-graph-matching-consensus)
   face_to_edge.py        FaceToEdge tolerant of <3-keypoint graphs (PyG ≥ 2.4 asserts)
@@ -31,6 +35,11 @@ rational_cnn/            the package
 experiments/
   pascal_voc.py          Experiment 1: PascalVOC-Keypoints / DGMC
   faust.py               Experiment 2: FAUST shape correspondence
+  ncaltech101.py         Experiment 3: N-Caltech101 / AEGNN recognition network (also N-Cars)
+  aegnn_net.py           AEGNN GraphRes with pluggable conv (PyG SplineConv, ours, rational, PointNet)
+  event_utils.py         AEGNN event pre-processing (median 50 ms window, fixed 25k events, beta time)
+  prepare_ncaltech101.py one-time download (5.9 GB, Gehrig et al. split) + pre-processing
+  prepare_ncars.py       same for N-Cars (Prophesee .dat; the data is behind a request form)
   backbones.py           --backbone/--rational_basis/--init/... flags shared by both scripts
   wandb_util.py          optional wandb logging (grad/update/param norms, losses, accuracies)
   prepare_pascal_voc.py  one-time dataset download (annotations via the Internet Archive) + VGG16 features
@@ -40,6 +49,7 @@ results/
   analyze.py             aggregates results/logs into the tables below (mean ± std, Welch t-tests)
   logs/pascal_voc/       95 training logs (19 configs × 5 seeds)
   logs/faust/            42 training logs (14 configs × 3 seeds)
+  logs/ncaltech101/      N-Caltech101 / AEGNN training logs
 tests/                   27 pytest tests (basis fits, PCA init, vp gain, conv equivalences, DGMC)
 paper/                   rational_basis_draft.tex / .pdf
 ```
@@ -74,6 +84,25 @@ forbids redistribution). Then:
 python experiments/prepare_faust.py --src /path/to/MPI-FAUST.zip    # or the unzipped MPI-FAUST/ dir
 ```
 
+**N-Caltech101** (Orchard et al., CC BY 4.0; the training / validation /
+test split of Gehrig et al., ICCV 2019, 5.9 GB):
+
+```bash
+python experiments/prepare_ncaltech101.py --download   # -> data/NCaltech101, ~2.7 GB processed
+```
+
+Per-batch radius graphs need `torch_cluster` (`pip install torch_cluster`;
+for recent torch/CUDA combinations without wheels, build from source with
+`FORCE_CUDA=1 pip install --no-build-isolation git+https://github.com/rusty1s/pytorch_cluster`).
+`--backbone pyg_spline` (the original fused kernel) additionally needs
+`torch_spline_conv`; without it use `--backbone spline`, our implementation of
+the same operator (identical to 1e-7, faster and leaner on these graphs).
+
+**N-Cars** must be requested from Prophesee
+(https://www.prophesee.ai/2018/03/13/dataset-n-cars/); then
+`python experiments/prepare_ncars.py --src /path/to/extracted` and
+`--dataset ncars` on `ncaltech101.py` (untested: we did not have the data).
+
 Use `--root <dir>` on any script to keep the data elsewhere than `data/`.
 
 ## Running the experiments
@@ -95,12 +124,25 @@ python experiments/faust.py --backbone rational --rational_basis multivariate \
        --degrees 8 6 --init pca --vp --num_bases 8                                         # mv, K=8
 ```
 
+# Experiment 3 — N-Caltech101 / AEGNN (30 epochs, ~7 min/epoch (spline) on an RTX 4070 Ti; seeds 0–2)
+python experiments/ncaltech101.py --backbone spline                                        # AEGNN recognition net, k=2 (K=8)
+python experiments/ncaltech101.py --backbone rational --rational_basis multivariate \
+       --degrees 8 6 --init pca --vp --num_bases 8                                         # mv, K=8
+python experiments/ncaltech101.py --backbone pointnet                                      # Jeziorek et al. replacement
+```
+
 Defaults are the exact paper settings: PascalVOC — DGMC with ψ₁: 1024→256,
 ψ₂: 128→128, 2 conv layers each, 10 consensus steps, Adam lr 1e-3, batch
 512, 15 epochs, 1000 test samples per category; FAUST — 6 conv layers
 (32, 64×5), ELU, Lin 256, dropout 0.5, Adam lr 0.01 → 0.001 at epoch 61,
 batch 1, 100 epochs, gradient-norm clipping 1.0, `add` aggregation (the PyG
-reference; `--aggr mean` is the paper's operator). Add `--wandb` for Weights &
+reference; `--aggr mean` is the paper's operator); N-Caltech101 — the AEGNN
+recognition network (7 SplineConv layers, kernel size 2, channels
+1 8 16 16 16 32 32 32, BatchNorm, ELU, two voxel max-poolings, no root
+weight / bias, mean aggregation), 25 000 events per sample from the 50 ms
+window before the median event, radius graph r = 5 with at most 32
+neighbours, time scaled by β = 0.5e-5/µs, Adam lr 1e-3, batch 16,
+cross-entropy, lr / 10 after epoch 20, 30 epochs. Add `--wandb` for Weights &
 Biases logging, `--seed N` for the seed.
 
 ### Slurm
@@ -109,6 +151,7 @@ Biases logging, `--seed N` for the seed.
 sbatch slurm/prep_pascal_voc.sbatch                # once
 slurm/submit.sh voc                                 # all paper configs × seeds 0–4
 slurm/submit.sh faust                               # all paper configs × seeds 0–2
+slurm/submit.sh ncal                                # all N-Caltech101 configs × seeds 0–2
 slurm/submit.sh voc mv_K4 mv_K6                     # a subset
 SEEDS="5 6" WANDB=1 slurm/submit.sh faust faust_mv_K8
 python results/analyze.py                           # tables + Welch t-tests from results/logs
