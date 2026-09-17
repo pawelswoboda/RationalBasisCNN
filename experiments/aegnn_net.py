@@ -71,8 +71,8 @@ class PointNetConv(MessagePassing):
     al., 2023, in place of SplineConv): ``max_j W [x_j, u_ij]``, computed as
     ``max_j (W_x x_j + W_u u_ij)`` so that only ``E x C_out`` messages are
     materialised."""
-    def __init__(self, in_channels, out_channels, dim):
-        super().__init__(aggr='max', node_dim=0)
+    def __init__(self, in_channels, out_channels, dim, aggr='max'):
+        super().__init__(aggr=aggr, node_dim=0)
         self.lin_x = Linear(in_channels, out_channels, bias=False)
         self.lin_u = Linear(dim, out_channels, bias=False)
         self.in_channels, self.out_channels, self.dim = in_channels, \
@@ -86,7 +86,7 @@ class PointNetConv(MessagePassing):
 
     def __repr__(self):
         return f'PointNetConv({self.in_channels}, {self.out_channels}, ' \
-            f'dim={self.dim})'
+            f'dim={self.dim}, aggr={self.aggr})'
 
 
 class PygSplineConv(MessagePassing):
@@ -95,8 +95,9 @@ class PygSplineConv(MessagePassing):
     ``torch_spline_conv`` kernels, which never materialise the ``K`` weight
     matrices per edge. Same mathematics and initialisation as our
     :class:`BSplineConv`; kept as the reference implementation."""
-    def __init__(self, in_channels, out_channels, dim, kernel_size, degree=1):
-        super().__init__(aggr='mean', node_dim=0)
+    def __init__(self, in_channels, out_channels, dim, kernel_size, degree=1,
+                 aggr='mean'):
+        super().__init__(aggr=aggr, node_dim=0)
         from torch.nn import Parameter
         from torch_geometric.nn.inits import uniform
         K = kernel_size ** dim
@@ -129,16 +130,19 @@ def make_aegnn_conv(args, in_channels, out_channels, dim=3):
     arguments of :func:`backbones.add_backbone_args` plus ``--backbone
     pyg_spline`` / ``pointnet``."""
     kw = dict(root_weight=False, bias=False)
+    aggr = getattr(args, 'aggr', 'mean')
     if args.backbone == 'pyg_spline':
-        return PygSplineConv(in_channels, out_channels, dim, args.kernel_size)
+        return PygSplineConv(in_channels, out_channels, dim, args.kernel_size,
+                             aggr=aggr)
     if args.backbone == 'spline':
         return BSplineConv(in_channels, out_channels, dim, args.kernel_size,
-                           aggr='mean', large=True, **kw)
+                           aggr=aggr, large=True, **kw)
     if args.backbone == 'pointnet':
-        return PointNetConv(in_channels, out_channels, dim)
+        pn_aggr = getattr(args, 'pointnet_aggr', None) or 'max'
+        return PointNetConv(in_channels, out_channels, dim, aggr=pn_aggr)
     assert args.backbone == 'rational'
     return RationalConv(in_channels, out_channels, dim, args.kernel_size,
-                        aggr='mean', basis=args.rational_basis, vp=args.vp,
+                        aggr=aggr, basis=args.rational_basis, vp=args.vp,
                         degrees=tuple(args.degrees), safe=args.safe,
                         poly=args.poly, init=args.init,
                         init_noise=args.init_noise,

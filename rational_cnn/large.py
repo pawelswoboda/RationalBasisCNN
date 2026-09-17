@@ -86,3 +86,25 @@ def chunked_basis(basis, pseudo, chunk_size=2**18):
     return torch.cat([checkpoint(basis, pseudo[s:s + chunk_size],
                                  use_reentrant=False)
                       for s in range(0, E, chunk_size)], dim=0)
+
+
+def basis_conv_max(R, x, edge_index, weight, chunk_size=2**20):
+    r"""The convolution with *max* aggregation, :math:`\max_{j \in
+    \mathcal{N}(i)} (\sum_p R_p(\mathbf{u}_{ij}) \mathbf{\Theta}_p)
+    \mathbf{x}_j` (elementwise), computed with per-edge messages in
+    checkpointed chunks so that only the :obj:`[E, C_out]` messages are kept
+    for the backward pass (nodes without neighbours get 0, as in PyG)."""
+    from torch.utils.checkpoint import checkpoint
+    from torch_geometric.utils import scatter
+    row, col = edge_index[0], edge_index[1]
+    N = x.size(0)
+    K, C_in, C_out = weight.shape
+
+    def message(Rc, xc):
+        xw = (xc @ weight.permute(1, 0, 2).reshape(C_in, K * C_out))
+        return torch.einsum('ek,eko->eo', Rc, xw.view(-1, K, C_out))
+
+    E = R.size(0)
+    msgs = [checkpoint(message, R[s:s + chunk_size], x[row[s:s + chunk_size]],
+                       use_reentrant=False) for s in range(0, E, chunk_size)]
+    return scatter(torch.cat(msgs, 0), col, dim=0, dim_size=N, reduce='max')

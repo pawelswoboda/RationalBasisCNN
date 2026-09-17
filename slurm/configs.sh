@@ -50,6 +50,9 @@ config_args() {
     ncal_rational_k2) echo "--backbone rational --kernel_size 2" ;;  # product basis, spline init, K=8
     ncal_mlp_K8)  echo "--backbone rational --rational_basis mlp --vp --num_bases 8" ;;
     ncal_pointnet) echo "--backbone pointnet" ;;        # Jeziorek et al. 2023 replacement
+    ncal_spline_max) echo "--backbone spline --aggr max" ;;   # max instead of mean aggregation
+    ncal_mv_K8_max)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --aggr max" ;;
+    ncal_pointnet_mean) echo "--backbone pointnet --pointnet_aggr mean" ;;
     ncal_spline_aug) echo "--backbone spline --augment" ;;   # + flip / translation augmentation
     ncal_mv_K8_aug)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --augment" ;;
     ncal_pointnet_aug) echo "--backbone pointnet --augment" ;;

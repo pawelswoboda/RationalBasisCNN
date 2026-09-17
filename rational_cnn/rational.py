@@ -8,7 +8,7 @@ from torch_geometric.nn import MessagePassing
 from torch_geometric.nn.inits import uniform
 
 from .bspline import open_bspline_basis_1d, bspline_basis
-from .large import basis_conv, chunked_basis
+from .large import basis_conv, basis_conv_max, chunked_basis
 
 
 def poly_features(t, degree, poly='chebyshev'):
@@ -687,7 +687,9 @@ class RationalConv(MessagePassing):
         if self.large:
             # Basis-first aggregation, O(E C_in) transient memory (see
             # rational_cnn.large), for graphs with ~1e7 edges.
-            out = basis_conv(R, x, edge_index, self.weight, aggr=self.aggr)
+            out = basis_conv_max(R, x, edge_index, self.weight) \
+                if self.aggr == 'max' else \
+                basis_conv(R, x, edge_index, self.weight, aggr=self.aggr)
         elif C_out <= C_in:
             # Transform node features by all K weight matrices, then combine
             # per edge: memory E * K * C_out.

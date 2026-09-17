@@ -3,7 +3,7 @@ from torch.nn import Parameter
 from torch_geometric.nn import MessagePassing
 from torch_geometric.nn.inits import uniform
 
-from .large import basis_conv
+from .large import basis_conv, basis_conv_max
 
 
 def open_bspline_1d(u, kernel_size):
@@ -136,7 +136,9 @@ class BSplineConv(MessagePassing):
             # rational_cnn.large); only sensible for small K (kernel_size 2
             # or 3), where the B-spline basis is (nearly) dense anyway.
             R = weight.new_zeros(idx.size(0), K).scatter_add_(1, idx, weight)
-            out = basis_conv(R, x, edge_index, self.weight, aggr=self.aggr)
+            out = basis_conv_max(R, x, edge_index, self.weight) \
+                if self.aggr == 'max' else \
+                basis_conv(R, x, edge_index, self.weight, aggr=self.aggr)
         else:
             # Transform node features by all K weight matrices at once; the
             # per-edge kernel is then a sparse combination of these.

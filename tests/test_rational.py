@@ -418,3 +418,32 @@ def test_large_graph_path_matches_dense():
         for pa, pb in zip(dense.parameters(), large.parameters()):
             if pa.grad is not None:
                 assert torch.allclose(pa.grad, pb.grad, atol=1e-9)
+
+
+def test_large_graph_max_aggregation_matches_dense():
+    from rational_cnn import BSplineConv, RationalConv
+    torch.manual_seed(0)
+    N, E = 100, 1500
+    x = torch.randn(N, 8, dtype=torch.double)
+    edge_index = torch.randint(0, N, (2, E))
+    u = torch.rand(E, 3, dtype=torch.double)
+    for make in [
+            lambda large: BSplineConv(8, 12, 3, 2, aggr='max', large=large),
+            lambda large: RationalConv(8, 12, 3, 2, basis='multivariate',
+                                       num_bases=6, init='pca',
+                                       degrees=(4, 3), aggr='max',
+                                       large=large)]:
+        torch.manual_seed(1)
+        dense = make(False).double()
+        torch.manual_seed(1)
+        large = make(True).double()
+        large.load_state_dict(dense.state_dict())
+        xa, xb = x.clone().requires_grad_(), x.clone().requires_grad_()
+        ya, yb = dense(xa, edge_index, u), large(xb, edge_index, u)
+        assert torch.allclose(ya, yb, atol=1e-10)
+        ya.sum().backward()
+        yb.sum().backward()
+        assert torch.allclose(xa.grad, xb.grad, atol=1e-10)
+        for pa, pb in zip(dense.parameters(), large.parameters()):
+            if pa.grad is not None:
+                assert torch.allclose(pa.grad, pb.grad, atol=1e-9)

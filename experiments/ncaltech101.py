@@ -43,6 +43,13 @@ parser.add_argument('--channels', type=int, nargs='+',
                     help='AEGNN recognition network: 1 8 16 16 16 32 32 32')
 parser.add_argument('--dataset', type=str, default='ncaltech101',
                     choices=['ncaltech101', 'ncars'])
+parser.add_argument('--aggr', type=str, default='mean',
+                    choices=['mean', 'max', 'add'],
+                    help='neighbourhood aggregation of spline / rational '
+                    'convs (AEGNN: mean); pointnet uses max unless --aggr '
+                    'add/max is given explicitly (--pointnet_aggr)')
+parser.add_argument('--pointnet_aggr', type=str, default=None,
+                    choices=['mean', 'max', 'add'])
 parser.add_argument('--radius', type=float, default=None,
                     help='radius graph radius (default 5 / 3)')
 parser.add_argument('--max_neighbors', type=int, default=32)
@@ -76,6 +83,8 @@ DATASETS = {  # AEGNN: image shape, radius, batch size, processed dir
     'ncars': dict(img=(120, 100), r=3.0, bs=64, dir='NCars'),
 }
 cfg = DATASETS[args.dataset]
+if args.backbone == 'pointnet' and args.pointnet_aggr:
+    args.aggr = args.pointnet_aggr
 args.radius = args.radius or cfg['r']
 args.batch_size = args.batch_size or cfg['bs']
 IMG_SHAPE = cfg['img']
