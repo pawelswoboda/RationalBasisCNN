@@ -479,9 +479,22 @@ class MultivariateRationalBasis(torch.nn.Module):
             Q = 1 + phi_den.abs() @ denominator.abs().t()
         return P / Q
 
+    def fused(self, pseudo):
+        r"""Whether :meth:`forward` will use the fused Triton kernels
+        (:mod:`rational_cnn.triton_basis`) for :obj:`pseudo`."""
+        from . import triton_basis
+        return triton_basis.available(pseudo)
+
     def forward(self, pseudo):
         r"""Evaluates all basis functions at :obj:`pseudo` of shape
-        :obj:`[E, dim]`, returning a tensor of shape :obj:`[E, num_bases]`."""
+        :obj:`[E, dim]`, returning a tensor of shape :obj:`[E, num_bases]`.
+        On CUDA the fused Triton kernels are used (set
+        :obj:`RATIONAL_BASIS_IMPL=eager` to disable)."""
+        if self.fused(pseudo):
+            from .triton_basis import rational_basis
+            return rational_basis(pseudo, self.numerator, self.denominator,
+                                  self.num_indices, self.den_indices,
+                                  self.safe, self.poly)
         return self.evaluate(pseudo, self.numerator, self.denominator)
 
     @property
@@ -681,8 +694,9 @@ class RationalConv(MessagePassing):
         """"""
         N, K, C_in, C_out = x.size(0), self.num_bases, self.in_channels, \
             self.out_channels
-        R = chunked_basis(self.basis, pseudo) if self.large else \
-            self.basis(pseudo)  # [E, K]
+        fused = getattr(self.basis, 'fused', lambda u: False)(pseudo)
+        R = chunked_basis(self.basis, pseudo) if self.large and not fused \
+            else self.basis(pseudo)  # [E, K]
 
         if self.large:
             # Basis-first aggregation, O(E C_in) transient memory (see

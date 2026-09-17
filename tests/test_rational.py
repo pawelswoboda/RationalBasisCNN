@@ -447,3 +447,36 @@ def test_large_graph_max_aggregation_matches_dense():
         for pa, pb in zip(dense.parameters(), large.parameters()):
             if pa.grad is not None:
                 assert torch.allclose(pa.grad, pb.grad, atol=1e-9)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason='CUDA only')
+def test_triton_rational_basis_matches_eager():
+    from rational_cnn.rational import MultivariateRationalBasis
+    from rational_cnn import triton_basis
+    if not triton_basis.HAS_TRITON:
+        pytest.skip('triton not installed')
+    torch.manual_seed(0)
+    configs = [(3, (8, 6), 8, 'B', 'chebyshev'), (2, (5, 4), 9, 'A', 'chebyshev'),
+               (3, (4, 3), 4, 'B', 'monomial'), (1, (5, 4), 5, 'A', 'monomial')]
+    for D, degrees, K, safe, poly in configs:
+        basis = MultivariateRationalBasis(D, 2, degrees=degrees, init='random',
+                                          num_bases=K, safe=safe,
+                                          poly=poly).cuda()
+        basis.denominator.data.normal_(0, 0.5)
+        basis.numerator.data.normal_(0, 1)
+        for E in [1, 300, 12345]:
+            u = torch.rand(E, D, device='cuda') * 1.2 - 0.1
+            a = basis.numerator.detach().clone().requires_grad_()
+            b = basis.denominator.detach().clone().requires_grad_()
+            ref = basis.evaluate(u, a, b)
+            g = torch.randn_like(ref)
+            (ref * g).sum().backward()
+            basis.zero_grad()
+            assert basis.fused(u)
+            out = basis(u)
+            (out * g).sum().backward()
+            assert torch.allclose(ref, out, atol=1e-4, rtol=1e-4)
+            for grad_ref, grad in [(a.grad, basis.numerator.grad),
+                                   (b.grad, basis.denominator.grad)]:
+                scale = grad_ref.abs().max()
+                assert (grad_ref - grad).abs().max() <= 1e-4 * scale
