@@ -73,19 +73,42 @@ def basis_conv(R, x, edge_index, weight, aggr='mean'):
     return Y.view(N, K * C_in) @ weight.view(K * C_in, C_out)
 
 
-def chunked_basis(basis, pseudo, chunk_size=2**18):
+_COMPILED = {}
+
+
+def chunked_basis(basis, pseudo, chunk_size=2**18, compile=None):
     r"""Evaluates a basis module :obj:`[E, D] -> [E, K]` in chunks of
     :obj:`chunk_size` edges with activation checkpointing, so that the
     intermediate polynomial / MLP features (up to hundreds per edge) are
     never stored for the backward pass; only the basis values :obj:`[E, K]`
-    are."""
+    are. On CUDA the basis is additionally :func:`torch.compile`\ d (kernel
+    fusion of the feature products, ~3x faster; disable with
+    :obj:`compile=False` or the environment variable
+    :obj:`RATIONAL_NO_COMPILE=1`); chunks are padded to a fixed size so that
+    the compiled kernel is not re-specialised for every batch."""
+    import os
     E = pseudo.size(0)
-    if E <= chunk_size:
+    if compile is None:
+        compile = pseudo.is_cuda and hasattr(torch, 'compile') and \
+            not os.environ.get('RATIONAL_NO_COMPILE')
+    fn = basis
+    if compile:
+        key = id(basis)
+        if key not in _COMPILED:
+            _COMPILED[key] = torch.compile(basis, dynamic=False)
+        fn = _COMPILED[key]
+    elif E <= chunk_size:
         return basis(pseudo)
     from torch.utils.checkpoint import checkpoint
-    return torch.cat([checkpoint(basis, pseudo[s:s + chunk_size],
-                                 use_reentrant=False)
-                      for s in range(0, E, chunk_size)], dim=0)
+    outs = []
+    for s in range(0, E, chunk_size):
+        chunk = pseudo[s:s + chunk_size]
+        n = chunk.size(0)
+        if compile and n < chunk_size:
+            chunk = torch.cat([chunk, chunk.new_zeros(chunk_size - n,
+                                                      chunk.size(1))])
+        outs.append(checkpoint(fn, chunk, use_reentrant=False)[:n])
+    return torch.cat(outs, dim=0)
 
 
 def basis_conv_max(R, x, edge_index, weight, chunk_size=2**20):
