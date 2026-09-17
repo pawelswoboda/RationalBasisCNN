@@ -72,6 +72,10 @@ parser.add_argument('--augment', action='store_true',
                     help='training augmentation: random horizontal flip and '
                     'random translation by up to 10%% of the image size '
                     '(not in AEGNN; the released pipeline has none)')
+parser.add_argument('--basis_impl', type=str, default=None,
+                    choices=['triton', 'compile', 'eager'],
+                    help='rational basis evaluation (default: package '
+                    'default, see rational_cnn.triton_basis.DEFAULT_IMPL)')
 parser.add_argument('--profile', type=int, default=0,
                     help='time N training batches (graph / forward / '
                     'backward) and exit')
@@ -82,6 +86,9 @@ DATASETS = {  # AEGNN: image shape, radius, batch size, processed dir
     'ncaltech101': dict(img=(240, 180), r=5.0, bs=16, dir='NCaltech101'),
     'ncars': dict(img=(120, 100), r=3.0, bs=64, dir='NCars'),
 }
+if args.basis_impl:
+    import os
+    os.environ['RATIONAL_BASIS_IMPL'] = args.basis_impl
 cfg = DATASETS[args.dataset]
 if args.backbone == 'pointnet' and args.pointnet_aggr:
     args.aggr = args.pointnet_aggr
@@ -125,6 +132,10 @@ if args.graph == 'auto':
     except ImportError:
         args.graph = 'nearest'
 print(f'radius graph: {args.graph}', flush=True)
+if args.backbone == 'rational':
+    import os
+    from rational_cnn.triton_basis import DEFAULT_IMPL
+    print(f"basis implementation: {os.environ.get('RATIONAL_BASIS_IMPL', DEFAULT_IMPL)}", flush=True)
 
 
 @torch.no_grad()

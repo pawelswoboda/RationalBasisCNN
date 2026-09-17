@@ -44,6 +44,7 @@ config_args() {
     ncal_spline_k3)   echo "--backbone spline --kernel_size 3" ;;  # K=27
     ncal_mv_K4)   echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 4" ;;
     ncal_mv_K8)   echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8" ;;
+    ncal_mv_K8_triton) echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --basis_impl triton" ;;  # kernel validation run
     ncal_mv_K16)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 16" ;;
     ncal_mv_K8_d54) echo "--backbone rational --rational_basis multivariate --degrees 5 4 --init pca --vp --num_bases 8" ;;
     ncal_mv_K4_d54) echo "--backbone rational --rational_basis multivariate --degrees 5 4 --init pca --vp --num_bases 4" ;;

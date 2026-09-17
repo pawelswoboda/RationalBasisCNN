@@ -52,9 +52,14 @@ except ImportError:  # pragma: no cover
     HAS_TRITON = False
 
 
+# Implementation used when RATIONAL_BASIS_IMPL is not set: 'triton' (these
+# kernels), 'compile' (chunked torch.compile'd evaluation) or 'eager'.
+DEFAULT_IMPL = 'compile'
+
+
 def available(u):
     r"""Whether the fused kernels can evaluate the basis at :obj:`u`."""
-    impl = os.environ.get('RATIONAL_BASIS_IMPL', 'triton')
+    impl = os.environ.get('RATIONAL_BASIS_IMPL', DEFAULT_IMPL)
     return HAS_TRITON and impl == 'triton' and u.is_cuda and u.dim() == 2 \
         and u.dtype == torch.float32 and not u.requires_grad
 
