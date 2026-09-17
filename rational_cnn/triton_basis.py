@@ -54,7 +54,7 @@ except ImportError:  # pragma: no cover
 
 # Implementation used when RATIONAL_BASIS_IMPL is not set: 'triton' (these
 # kernels), 'compile' (chunked torch.compile'd evaluation) or 'eager'.
-DEFAULT_IMPL = 'compile'
+DEFAULT_IMPL = 'triton'
 
 
 def available(u):
