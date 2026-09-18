@@ -166,3 +166,10 @@ nc = summarize('ncaltech101', 'N-Caltech101 object recognition (AEGNN '
                 ('ncal_mv_K8_max', 'ncal_mv_K8'), ('ncal_mv_K8_max', 'ncal_pointnet'),
                 ('ncal_pointnet_mean', 'ncal_pointnet'), ('ncal_pointnet_mean', 'ncal_spline'),
                 ('ncal_rational_k2', 'ncal_spline')])
+
+nc2 = summarize('ncars', 'N-Cars car / background recognition (AEGNN recognition '
+                'network, test accuracy, 30 epochs)',
+                [('ncars_mv_K8', 'ncars_spline'), ('ncars_mv_K4', 'ncars_spline'),
+                 ('ncars_mv_K8', 'ncars_pointnet'), ('ncars_spline', 'ncars_pointnet'),
+                 ('ncars_spline_max', 'ncars_spline'), ('ncars_mv_K8_max', 'ncars_spline_max'),
+                 ('ncars_mv_K8_max', 'ncars_pointnet')])

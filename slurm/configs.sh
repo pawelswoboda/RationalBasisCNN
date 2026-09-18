@@ -65,6 +65,13 @@ config_args() {
     ncal_spline_aug) echo "--backbone spline --augment" ;;   # + flip / translation augmentation
     ncal_mv_K8_aug)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --augment" ;;
     ncal_pointnet_aug) echo "--backbone pointnet --augment" ;;
+    # ---- N-Cars / AEGNN (experiments/ncaltech101.py --dataset ncars: r=3, 10k events, batch 64, 120x100) ----
+    ncars_spline)     echo "--backbone spline" ;;
+    ncars_mv_K4)      echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 4" ;;
+    ncars_mv_K8)      echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8" ;;
+    ncars_pointnet)   echo "--backbone pointnet" ;;
+    ncars_spline_max) echo "--backbone spline --aggr max" ;;
+    ncars_mv_K8_max)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --aggr max" ;;
     *) echo "unknown config '$1'" >&2; return 1 ;;
   esac
 }
