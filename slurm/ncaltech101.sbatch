@@ -4,7 +4,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
-#SBATCH --time=24:00:00
+#SBATCH --time=48:00:00
 #SBATCH --output=slurm/logs/%x-%j.out
 # One N-Caltech101 (AEGNN) run (experiments/ncaltech101.py) for configuration $CONFIG (see
 # configs.sh) and seed $SEED. Env: CONFIG (required), SEED (0), EPOCHS (30),

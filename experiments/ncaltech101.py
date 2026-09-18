@@ -59,6 +59,14 @@ parser.add_argument('--graph', type=str, default='auto',
                     'neighbours found, as AEGNN) or the 32 nearest within r')
 parser.add_argument('--lr', type=float, default=1e-3)
 parser.add_argument('--lr_decay_epoch', type=int, default=20)
+parser.add_argument('--schedule', type=str, default='step',
+                    choices=['step', 'plateau'],
+                    help="'step': lr/10 at --lr_decay_epoch (AEGNN); "
+                    "'plateau': lr/10 when validation accuracy has not "
+                    "improved for --plateau_patience epochs, training stops "
+                    "after the third plateau (i.e. two decays), or at "
+                    "--epochs")
+parser.add_argument('--plateau_patience', type=int, default=8)
 parser.add_argument('--epochs', type=int, default=30)
 parser.add_argument('--batch_size', type=int, default=None,
                     help='default 16 / 64')
@@ -67,6 +75,8 @@ parser.add_argument('--seed', type=int, default=0)
 parser.add_argument('--root', type=str, default=osp.join(ROOT, 'data'))
 parser.add_argument('--train_samples', type=int, default=0,
                     help='use only the first n training samples (smoke test)')
+parser.add_argument('--eval_samples', type=int, default=0,
+                    help='use only the first n val/test samples (smoke test)')
 parser.add_argument('--eval_every', type=int, default=1)
 parser.add_argument('--augment', action='store_true',
                     help='training augmentation: random horizontal flip and '
@@ -118,8 +128,8 @@ def load_split(split, limit=0):
 
 
 train = load_split('training', args.train_samples)
-val = load_split('validation')
-test = load_split('test')
+val = load_split('validation', args.eval_samples)
+test = load_split('test', args.eval_samples)
 n_events = train[0].size(1)
 print(f'{args.dataset}: {len(classes)} classes, {train[2].numel()} train / '
       f'{val[2].numel()} val / {test[2].numel()} test samples, '
@@ -196,8 +206,13 @@ print(model, flush=True)
 print(f'{num_params} parameters ({conv_params} in convolutions)', flush=True)
 
 optimizer = make_optimizer(model, args)
-scheduler = torch.optim.lr_scheduler.MultiStepLR(
-    optimizer, milestones=[args.lr_decay_epoch], gamma=0.1)
+if args.schedule == 'step':
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, milestones=[args.lr_decay_epoch], gamma=0.1)
+else:
+    assert args.eval_every == 1, 'plateau schedule needs validation each epoch'
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='max', factor=0.1, patience=args.plateau_patience)
 logger = init_wandb(args, args.dataset, model, conv_params=conv_params)
 
 
@@ -265,7 +280,8 @@ best_val, test_at_best, best_epoch = 0, 0, 0
 for epoch in range(1, args.epochs + 1):
     t0 = time.time()
     loss, train_acc = train_epoch()
-    scheduler.step()
+    if args.schedule == 'step':
+        scheduler.step()
     t_train = time.time() - t0
     if epoch % args.eval_every == 0 or epoch == args.epochs:
         val_acc, test_acc = evaluate(val), evaluate(test)
@@ -273,16 +289,29 @@ for epoch in range(1, args.epochs + 1):
             best_val, test_at_best, best_epoch = val_acc, test_acc, epoch
     else:
         val_acc = test_acc = float('nan')
+    stop = False
+    if args.schedule == 'plateau':
+        scheduler.step(val_acc)
+        lr_now = optimizer.param_groups[0]['lr']
+        # Converged: two decays done and validation flat again.
+        if lr_now < args.lr * 0.011 and \
+                scheduler.num_bad_epochs >= args.plateau_patience:
+            stop = True
     mem = torch.cuda.max_memory_allocated() / 2**30 if device.type == 'cuda' \
         else 0
+    lr_now = optimizer.param_groups[0]['lr']
     print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Train: {train_acc:.2f}, '
           f'Val: {val_acc:.2f}, Test: {test_acc:.2f}, Time: {t_train:.0f}s, '
-          f'Mem: {mem:.1f}GB', flush=True)
+          f'Mem: {mem:.1f}GB, LR: {lr_now:.0e}', flush=True)
     logger.log({'loss': loss, 'train_acc': train_acc, 'val_acc': val_acc,
-                'test_acc': test_acc, 'epoch_time': t_train,
-                'lr': scheduler.get_last_lr()[0]}, step=epoch)
+                'test_acc': test_acc, 'epoch_time': t_train, 'lr': lr_now},
+               step=epoch)
+    if stop:
+        print(f'Converged (validation plateau after two lr decays) at epoch '
+              f'{epoch}', flush=True)
+        break
 
-print(f'Best val {best_val:.2f} at epoch {best_epoch}')
+print(f'Best val {best_val:.2f} at epoch {best_epoch} ({epoch} epochs trained)')
 print(f'Final test accuracy: {test_acc:.2f} (best {test_at_best:.2f})')
 logger.summary({'final_test_acc': test_acc, 'best_val_acc': best_val,
                 'test_at_best_val': test_at_best, 'best_epoch': best_epoch,

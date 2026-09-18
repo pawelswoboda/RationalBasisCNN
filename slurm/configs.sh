@@ -56,9 +56,12 @@ config_args() {
     ncal_pointnet_mean) echo "--backbone pointnet --pointnet_aggr mean" ;;
     ncal_spline_max_aug) echo "--backbone spline --aggr max --augment" ;;
     ncal_mv_K8_max_aug)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --aggr max --augment" ;;
-    # 60-epoch schedule (submit with EPOCHS=60): lr decay at epoch 40
-    ncal_spline_max_aug_long) echo "--backbone spline --aggr max --augment --lr_decay_epoch 40" ;;
-    ncal_mv_K8_max_aug_long)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --aggr max --augment --lr_decay_epoch 40" ;;
+    # trained to convergence (submit with EPOCHS=200 as the cap): lr/10 on validation plateaus, stop after the 2nd decay plateaus
+    ncal_spline_aug_conv)     echo "--backbone spline --augment --schedule plateau" ;;
+    ncal_mv_K8_aug_conv)      echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --augment --schedule plateau" ;;
+    ncal_pointnet_aug_conv)   echo "--backbone pointnet --augment --schedule plateau" ;;
+    ncal_spline_max_aug_conv) echo "--backbone spline --aggr max --augment --schedule plateau" ;;
+    ncal_mv_K8_max_aug_conv)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --aggr max --augment --schedule plateau" ;;
     ncal_spline_aug) echo "--backbone spline --augment" ;;   # + flip / translation augmentation
     ncal_mv_K8_aug)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --augment" ;;
     ncal_pointnet_aug) echo "--backbone pointnet --augment" ;;
