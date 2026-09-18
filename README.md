@@ -28,6 +28,7 @@ rational_cnn/            the package
                          RationalConv, RationalCNN; hat-fit / PCA-of-hats / vp initialization
   bspline.py             BSplineConv: pure-PyTorch SplineConv (no torch-spline-conv needed)
   large.py               basis-first aggregation for graphs with ~1e7 edges (large=True in both convs)
+  triton_basis.py        fused Triton kernels for the multivariate rational basis (default on CUDA)
   spline_cnn.py          SplineCNN backbone stack (DGMC ψ networks)
   dgmc.py, data.py       DGMC model and pair datasets (from rusty1s/deep-graph-matching-consensus)
   face_to_edge.py        FaceToEdge tolerant of <3-keypoint graphs (PyG ≥ 2.4 asserts)
@@ -49,8 +50,8 @@ results/
   analyze.py             aggregates results/logs into the tables below (mean ± std, Welch t-tests)
   logs/pascal_voc/       95 training logs (19 configs × 5 seeds)
   logs/faust/            42 training logs (14 configs × 3 seeds)
-  logs/ncaltech101/      N-Caltech101 / AEGNN training logs
-tests/                   27 pytest tests (basis fits, PCA init, vp gain, conv equivalences, DGMC)
+  logs/ncaltech101/      33 training logs (13 configs, mostly 3 seeds)
+tests/                   30 pytest tests (basis fits, PCA init, vp gain, conv / kernel equivalences, DGMC)
 paper/                   rational_basis_draft.tex / .pdf
 ```
 
@@ -202,6 +203,47 @@ unless noted.
 | multivariate K=16 / K=27 (`faust_mv_K16`, `faust_mv_K27`) | 16 / 27 | 2.13M / 2.34M | 70.4 ± 25.2 / 19.0 ± 32.8 |
 | SplineCNN k=5, add, no clip (`faust_spline_noclip`, literal PyG example) | 125 | 4.11M | 29.1 ± 50.3 |
 | SplineCNN k=2 (`faust_spline_k2`) | 8 | 1.95M | 3.4 ± 3.3 |
+
+**N-Caltech101 / AEGNN**, test accuracy after 30 epochs of the AEGNN
+recognition network (7 convolutions, kernel size 2, channels
+1 8 16 16 16 32 32 32, mean aggregation unless noted), mean ± std over 3
+seeds. `conv` counts the parameters of the seven convolutions; PointNet is
+the SplineConv replacement of Jeziorek et al. (2023), `max_j W [x_j, u_ij]`.
+
+| config (`configs.sh` name) | aggr | conv params | final acc |
+|---|---|---|---|
+| SplineConv k=2, K=8 (`ncal_spline`, AEGNN as published) | mean | 25.7k | 42.68 ± 0.81 |
+| SplineConv k=2, PyG fused kernel (`ncal_pyg_spline`, 1 seed) | mean | 25.7k | 41.41 |
+| product rational k=2, hat init (`ncal_rational_k2`, 1 seed) | mean | 26.1k | 43.54 |
+| **multivariate K=4, PCA+vp (`ncal_mv_K4`)** | mean | 19.8k | **48.78 ± 0.77** |
+| **multivariate K=8, PCA+vp (`ncal_mv_K8`)** | mean | 39.6k | **48.57 ± 1.98** |
+| PointNet conv (`ncal_pointnet`) | max | 3.7k | 51.46 ± 1.24 |
+| PointNet conv (`ncal_pointnet_mean`) | mean | 3.7k | 41.01 ± 1.15 |
+| SplineConv k=2 (`ncal_spline_max`) | max | 25.7k | 52.71 ± 1.70 |
+| **multivariate K=8 (`ncal_mv_K8_max`)** | max | 39.6k | **54.51 ± 1.40** |
+| SplineConv k=2 + flip/shift augmentation (`ncal_spline_aug`) | mean | 25.7k | 47.14 ± 0.63 |
+| **multivariate K=8 + augmentation (`ncal_mv_K8_aug`)** | mean | 39.6k | **54.32 ± 0.18** |
+| PointNet conv + augmentation (`ncal_pointnet_aug`) | max | 3.7k | 54.84 ± 0.24 |
+
+Welch t-tests: `mv_K4` vs `spline` +6.11 (p = 0.001), `mv_K8` vs `spline`
++5.90 (p = 0.023), `mv_K8_aug` vs `spline_aug` +7.18 (p = 0.001),
+`mv_K8_max` vs `spline_max` +1.80 (p = 0.23), `mv_K8_max` vs `pointnet`
++3.05 (p = 0.048), `pointnet_mean` vs `pointnet` −10.45 (p < 0.001),
+`spline_max` vs `spline` +10.03 (p = 0.003).
+
+Reading: with AEGNN's protocol the rational basis adds about 6 points over
+SplineConv at equal K (and K=4 does so with 23% fewer conv parameters); the
+gain persists under augmentation (+7). PointNet's advantage over SplineConv
+(Jeziorek et al.) is entirely its max aggregation: with mean aggregation it
+drops to SplineConv level, and SplineConv / the rational basis with max
+aggregation gain 10 / 6 points. The absolute numbers are below the 66.8%
+reported for AEGNN: the released code has no training script or
+augmentation, so the published regularisation could not be reproduced; the
+fidelity check with PyG's own SplineConv kernel lands at the same level as
+our implementation. The rational runs use the fused Triton kernels
+(`rational_cnn/triton_basis.py`, validated against the eager evaluation on
+`ncal_mv_K8_triton`: 47.85 vs 48.48 with the same seed), which make a
+rational epoch ~1.2x a SplineConv epoch.
 
 ## Method summary
 
