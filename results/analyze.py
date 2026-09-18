@@ -158,7 +158,11 @@ fa = summarize('faust', 'FAUST shape correspondence (exact vertex accuracy, '
 nc = summarize('ncaltech101', 'N-Caltech101 object recognition (AEGNN '
                'recognition network, test accuracy, 30 epochs)',
                [('ncal_mv_K8', 'ncal_spline'), ('ncal_mv_K4', 'ncal_spline'),
-                ('ncal_mv_K16', 'ncal_spline'), ('ncal_mv_K8_d54', 'ncal_spline'),
-                ('ncal_mv_K8', 'ncal_pointnet'), ('ncal_mv_K8', 'ncal_mlp_K8'),
-                ('ncal_spline', 'ncal_pyg_spline'), ('ncal_spline', 'ncal_pointnet'),
-                ('ncal_rational_k2', 'ncal_spline'), ('ncal_spline_k3', 'ncal_spline')])
+                ('ncal_mv_K8', 'ncal_pointnet'), ('ncal_spline', 'ncal_pointnet'),
+                ('ncal_spline', 'ncal_pyg_spline'),
+                ('ncal_mv_K8_aug', 'ncal_spline_aug'), ('ncal_mv_K8_aug', 'ncal_pointnet_aug'),
+                ('ncal_spline_aug', 'ncal_spline'), ('ncal_mv_K8_aug', 'ncal_mv_K8'),
+                ('ncal_spline_max', 'ncal_spline'), ('ncal_mv_K8_max', 'ncal_spline_max'),
+                ('ncal_mv_K8_max', 'ncal_mv_K8'), ('ncal_mv_K8_max', 'ncal_pointnet'),
+                ('ncal_pointnet_mean', 'ncal_pointnet'), ('ncal_pointnet_mean', 'ncal_spline'),
+                ('ncal_rational_k2', 'ncal_spline')])
