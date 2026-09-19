@@ -165,11 +165,18 @@ nc = summarize('ncaltech101', 'N-Caltech101 object recognition (AEGNN '
                 ('ncal_spline_max', 'ncal_spline'), ('ncal_mv_K8_max', 'ncal_spline_max'),
                 ('ncal_mv_K8_max', 'ncal_mv_K8'), ('ncal_mv_K8_max', 'ncal_pointnet'),
                 ('ncal_pointnet_mean', 'ncal_pointnet'), ('ncal_pointnet_mean', 'ncal_spline'),
-                ('ncal_rational_k2', 'ncal_spline')])
+                ('ncal_rational_k2', 'ncal_spline'),
+                ('ncal_mv_K8_max_aug', 'ncal_spline_max_aug'), ('ncal_mv_K8_max_aug', 'ncal_pointnet_aug'),
+                ('ncal_mv_K8_max_aug', 'ncal_mv_K8_aug'), ('ncal_mv_K8_max_aug', 'ncal_mv_K8_max'),
+                ('ncal_mv_K8_aug_conv', 'ncal_spline_aug_conv'), ('ncal_mv_K8_aug_conv', 'ncal_pointnet_aug_conv'),
+                ('ncal_mv_K8_max_aug_conv', 'ncal_spline_max_aug_conv'), ('ncal_mv_K8_max_aug_conv', 'ncal_pointnet_aug_conv'),
+                ('ncal_spline_aug_conv', 'ncal_spline_aug'), ('ncal_mv_K8_aug_conv', 'ncal_mv_K8_aug'),
+                ('ncal_spline_max_aug_conv', 'ncal_spline_max_aug'), ('ncal_mv_K8_max_aug_conv', 'ncal_mv_K8_max_aug')])
 
 nc2 = summarize('ncars', 'N-Cars car / background recognition (AEGNN recognition '
                 'network, test accuracy, 30 epochs)',
                 [('ncars_mv_K8', 'ncars_spline'), ('ncars_mv_K4', 'ncars_spline'),
                  ('ncars_mv_K8', 'ncars_pointnet'), ('ncars_spline', 'ncars_pointnet'),
                  ('ncars_spline_max', 'ncars_spline'), ('ncars_mv_K8_max', 'ncars_spline_max'),
-                 ('ncars_mv_K8_max', 'ncars_pointnet')])
+                 ('ncars_mv_K8_max', 'ncars_pointnet'), ('ncars_mv_K8', 'ncars_spline_max'),
+                 ('ncars_mv_K8_max', 'ncars_mv_K8'), ('ncars_pointnet', 'ncars_spline')])

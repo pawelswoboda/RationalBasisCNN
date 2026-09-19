@@ -1,0 +1,143 @@
+/home/pswoboda/repo/rational-splinecnn/experiments/ncaltech101.py:125: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  return (torch.from_numpy(np.ascontiguousarray(pos)).to(device),
+ncaltech101: 101 classes, 4356 train / 2612 val / 1741 test samples, 25000 events each
+/home/pswoboda/repo/rational-splinecnn/experiments/ncaltech101.py:140: DeprecationWarning: 'torch-cluster' is deprecated and no longer maintained. All functionality has been migrated to 'pyg-lib>=0.7.0' (https://github.com/pyg-team/pyg-lib).
+  import torch_cluster  # noqa: F401
+radius graph: cluster
+GraphRes(
+  (conv1): BSplineConv(1, 8, dim=3, kernel_size=[2, 2, 2])
+  (norm1): BatchNorm(8, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv2): BSplineConv(8, 16, dim=3, kernel_size=[2, 2, 2])
+  (norm2): BatchNorm(16, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv3): BSplineConv(16, 16, dim=3, kernel_size=[2, 2, 2])
+  (norm3): BatchNorm(16, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv4): BSplineConv(16, 16, dim=3, kernel_size=[2, 2, 2])
+  (norm4): BatchNorm(16, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv5): BSplineConv(16, 32, dim=3, kernel_size=[2, 2, 2])
+  (norm5): BatchNorm(32, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (pool5): MaxPooling()
+  (conv6): BSplineConv(32, 32, dim=3, kernel_size=[2, 2, 2])
+  (norm6): BatchNorm(32, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv7): BSplineConv(32, 32, dim=3, kernel_size=[2, 2, 2])
+  (norm7): BatchNorm(32, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (pool7): MaxPoolingX()
+  (fc): Linear(in_features=512, out_features=101, bias=False)
+)
+77680 parameters (25664 in convolutions)
+wandb: Currently logged in as: pswoboda to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run 9x8wjtsx
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in /home/pswoboda/repo/rational-splinecnn/wandb/wandb/run-20260918_202553-9x8wjtsx
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run ncaltech101_ncal_spline_aug_conv_seed2
+wandb: ⭐️ View project at https://wandb.ai/pswoboda/rational-splinecnn
+wandb: 🚀 View run at https://wandb.ai/pswoboda/rational-splinecnn/runs/9x8wjtsx
+/home/pswoboda/.venv/lib/python3.11/site-packages/torch_geometric/utils/_scatter.py:91: UserWarning: The usage of `scatter(reduce='max')` can be accelerated via the 'torch-scatter' package, but it was not found
+  warnings.warn(
+Epoch: 001, Loss: 4.3363, Train: 19.44, Val: 25.15, Test: 26.54, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 002, Loss: 3.7036, Train: 24.43, Val: 26.84, Test: 27.17, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 003, Loss: 3.4568, Train: 26.29, Val: 28.22, Test: 29.06, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 004, Loss: 3.2419, Train: 29.66, Val: 29.79, Test: 29.52, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 005, Loss: 3.0497, Train: 32.71, Val: 33.96, Test: 34.98, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 006, Loss: 2.9202, Train: 34.32, Val: 34.30, Test: 35.44, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 007, Loss: 2.7890, Train: 36.96, Val: 36.45, Test: 35.96, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 008, Loss: 2.6761, Train: 37.79, Val: 36.37, Test: 36.30, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 009, Loss: 2.6050, Train: 39.46, Val: 37.52, Test: 36.36, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 010, Loss: 2.4742, Train: 42.36, Val: 38.44, Test: 37.97, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 011, Loss: 2.3999, Train: 43.43, Val: 39.97, Test: 39.98, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 012, Loss: 2.2862, Train: 44.86, Val: 41.73, Test: 41.59, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 013, Loss: 2.1799, Train: 46.88, Val: 41.62, Test: 42.16, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 014, Loss: 2.1197, Train: 48.03, Val: 43.34, Test: 42.33, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 015, Loss: 2.0573, Train: 49.77, Val: 43.11, Test: 43.37, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 016, Loss: 1.9563, Train: 51.68, Val: 44.68, Test: 43.48, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 017, Loss: 1.9206, Train: 51.81, Val: 44.60, Test: 44.51, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 018, Loss: 1.8532, Train: 54.38, Val: 44.79, Test: 43.77, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 019, Loss: 1.8124, Train: 54.57, Val: 44.14, Test: 44.40, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 020, Loss: 1.7593, Train: 55.81, Val: 45.25, Test: 44.86, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 021, Loss: 1.7590, Train: 56.24, Val: 45.83, Test: 46.12, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 022, Loss: 1.6911, Train: 57.87, Val: 44.53, Test: 45.32, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 023, Loss: 1.6407, Train: 58.84, Val: 45.14, Test: 43.71, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 024, Loss: 1.6166, Train: 58.59, Val: 46.44, Test: 45.66, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 025, Loss: 1.6112, Train: 59.07, Val: 43.72, Test: 43.94, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 026, Loss: 1.5320, Train: 60.88, Val: 45.64, Test: 45.15, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 027, Loss: 1.5356, Train: 60.38, Val: 45.71, Test: 43.94, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 028, Loss: 1.4811, Train: 61.43, Val: 45.75, Test: 44.46, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 029, Loss: 1.4552, Train: 62.42, Val: 45.94, Test: 44.80, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 030, Loss: 1.4507, Train: 62.70, Val: 46.36, Test: 45.49, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 031, Loss: 1.3951, Train: 63.50, Val: 46.40, Test: 45.32, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 032, Loss: 1.4129, Train: 63.13, Val: 45.56, Test: 44.69, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 033, Loss: 1.3598, Train: 63.84, Val: 46.94, Test: 44.57, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 034, Loss: 1.3278, Train: 65.06, Val: 45.94, Test: 44.51, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 035, Loss: 1.2962, Train: 66.07, Val: 45.44, Test: 44.80, Time: 173s, Mem: 10.6GB, LR: 1e-03
+Epoch: 036, Loss: 1.2905, Train: 66.21, Val: 45.98, Test: 44.17, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 037, Loss: 1.2612, Train: 65.70, Val: 46.71, Test: 45.20, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 038, Loss: 1.2654, Train: 65.54, Val: 46.94, Test: 45.49, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 039, Loss: 1.2340, Train: 66.16, Val: 46.67, Test: 45.26, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 040, Loss: 1.2358, Train: 67.98, Val: 45.98, Test: 44.97, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 041, Loss: 1.1834, Train: 67.79, Val: 47.40, Test: 46.87, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 042, Loss: 1.1743, Train: 68.00, Val: 46.90, Test: 46.07, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 043, Loss: 1.1520, Train: 68.82, Val: 46.17, Test: 45.49, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 044, Loss: 1.1405, Train: 68.87, Val: 46.90, Test: 46.98, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 045, Loss: 1.1413, Train: 68.92, Val: 47.09, Test: 46.12, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 046, Loss: 1.1198, Train: 69.54, Val: 47.21, Test: 45.89, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 047, Loss: 1.1109, Train: 69.61, Val: 46.06, Test: 46.64, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 048, Loss: 1.1149, Train: 69.28, Val: 46.02, Test: 44.34, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 049, Loss: 1.0733, Train: 70.52, Val: 47.21, Test: 46.64, Time: 172s, Mem: 10.6GB, LR: 1e-03
+Epoch: 050, Loss: 1.0686, Train: 70.78, Val: 46.59, Test: 44.51, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 051, Loss: 0.9255, Train: 73.51, Val: 47.93, Test: 46.24, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 052, Loss: 0.9174, Train: 74.68, Val: 48.12, Test: 46.47, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 053, Loss: 0.8700, Train: 75.57, Val: 48.16, Test: 46.18, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 054, Loss: 0.8853, Train: 76.03, Val: 47.97, Test: 46.75, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 055, Loss: 0.8894, Train: 75.09, Val: 47.97, Test: 46.47, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 056, Loss: 0.8766, Train: 75.55, Val: 48.32, Test: 46.70, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 057, Loss: 0.8729, Train: 75.21, Val: 48.51, Test: 47.33, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 058, Loss: 0.8630, Train: 76.15, Val: 48.16, Test: 46.87, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 059, Loss: 0.8383, Train: 76.52, Val: 48.20, Test: 47.16, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 060, Loss: 0.8553, Train: 76.72, Val: 48.43, Test: 46.41, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 061, Loss: 0.8325, Train: 76.33, Val: 48.24, Test: 47.16, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 062, Loss: 0.8543, Train: 76.97, Val: 48.39, Test: 46.81, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 063, Loss: 0.8356, Train: 76.58, Val: 48.28, Test: 47.16, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 064, Loss: 0.8005, Train: 77.09, Val: 48.12, Test: 47.39, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 065, Loss: 0.8076, Train: 77.04, Val: 48.24, Test: 46.81, Time: 172s, Mem: 10.6GB, LR: 1e-04
+Epoch: 066, Loss: 0.8336, Train: 76.17, Val: 48.20, Test: 46.75, Time: 172s, Mem: 10.6GB, LR: 1e-05
+Epoch: 067, Loss: 0.7907, Train: 77.92, Val: 47.86, Test: 47.10, Time: 172s, Mem: 10.6GB, LR: 1e-05
+Epoch: 068, Loss: 0.8028, Train: 77.09, Val: 48.12, Test: 46.87, Time: 172s, Mem: 10.6GB, LR: 1e-05
+Epoch: 069, Loss: 0.7933, Train: 77.32, Val: 48.05, Test: 47.16, Time: 172s, Mem: 10.6GB, LR: 1e-05
+Epoch: 070, Loss: 0.7944, Train: 77.34, Val: 48.24, Test: 46.93, Time: 172s, Mem: 10.6GB, LR: 1e-05
+Epoch: 071, Loss: 0.8087, Train: 77.57, Val: 48.47, Test: 46.58, Time: 172s, Mem: 10.6GB, LR: 1e-05
+Epoch: 072, Loss: 0.8020, Train: 77.92, Val: 48.51, Test: 46.93, Time: 172s, Mem: 10.6GB, LR: 1e-05
+Epoch: 073, Loss: 0.7750, Train: 78.19, Val: 47.93, Test: 47.21, Time: 172s, Mem: 10.6GB, LR: 1e-05
+Epoch: 074, Loss: 0.8074, Train: 77.59, Val: 48.09, Test: 47.21, Time: 172s, Mem: 10.6GB, LR: 1e-05
+Converged (validation plateau after two lr decays) at epoch 74
+Best val 48.51 at epoch 57 (74 epochs trained)
+Final test accuracy: 47.21 (best 47.33)
+wandb: updating run metadata
+wandb: uploading output.log
+wandb: uploading history steps 72-73, summary, console lines 75-78
+wandb: 
+wandb: Run history:
+wandb: epoch_time ▆▅▆▇▅▄▅▅▄▄▆▆▁▄▄█▆▅▅▄▅▅▅▄▄▂▃▃▁▃▄▃▄▃▄▄▄▄▄▄
+wandb:       loss ██▇▇▆▅▅▄▄▄▄▄▃▃▃▃▃▃▃▃▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:         lr █████████████████████████▂▂▂▂▂▂▂▂▂▂▂▁▁▁▁
+wandb:   test_acc ▁▁▂▄▄▆▆▇▇▇█▇▇▇▇▇▇▇▇▇█▇██▇▇██████████████
+wandb:  train_acc ▁▂▂▂▃▄▄▄▄▅▅▅▆▆▆▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇██████████
+wandb:    val_acc ▁▂▂▂▄▄▄▅▅▅▇▇▇▇▇▇▇█▇▇▇███▇███████████████
+wandb: 
+wandb: Run summary:
+wandb:       best_epoch 57
+wandb:     best_val_acc 48.50689
+wandb:      conv_params 25664
+wandb:       epoch_time 172.3989
+wandb:   final_test_acc 47.21424
+wandb:             loss 0.8074
+wandb:               lr 1e-05
+wandb:       num_params 77680
+wandb:         test_acc 47.21424
+wandb: test_at_best_val 47.32912
+wandb:               +2 ...
+wandb: 
+wandb: 🚀 View run ncaltech101_ncal_spline_aug_conv_seed2 at: https://wandb.ai/pswoboda/rational-splinecnn/runs/9x8wjtsx
+wandb: ⭐️ View project at: https://wandb.ai/pswoboda/rational-splinecnn
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/wandb/run-20260918_202553-9x8wjtsx/logs
+DONE

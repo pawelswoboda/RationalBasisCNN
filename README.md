@@ -50,7 +50,8 @@ results/
   analyze.py             aggregates results/logs into the tables below (mean ± std, Welch t-tests)
   logs/pascal_voc/       95 training logs (19 configs × 5 seeds)
   logs/faust/            42 training logs (14 configs × 3 seeds)
-  logs/ncaltech101/      33 training logs (13 configs, mostly 3 seeds)
+  logs/ncaltech101/      54 training logs (20 configs, mostly 3 seeds)
+  logs/ncars/            18 training logs (6 configs x 3 seeds)
 tests/                   30 pytest tests (basis fits, PCA init, vp gain, conv / kernel equivalences, DGMC)
 paper/                   rational_basis_draft.tex / .pdf
 ```
@@ -224,12 +225,25 @@ the SplineConv replacement of Jeziorek et al. (2023), `max_j W [x_j, u_ij]`.
 | SplineConv k=2 + flip/shift augmentation (`ncal_spline_aug`) | mean | 25.7k | 47.14 ± 0.63 |
 | **multivariate K=8 + augmentation (`ncal_mv_K8_aug`)** | mean | 39.6k | **54.32 ± 0.18** |
 | PointNet conv + augmentation (`ncal_pointnet_aug`) | max | 3.7k | 54.84 ± 0.24 |
+| SplineConv k=2 + augmentation (`ncal_spline_max_aug`) | max | 25.7k | 54.72 ± 0.63 |
+| **multivariate K=8 + augmentation (`ncal_mv_K8_max_aug`)** | max | 39.6k | **57.27 ± 0.46** |
+| *trained to convergence* (`--schedule plateau`: lr/10 on validation plateaus, stop after the 2nd; 51-92 epochs) | | | |
+| SplineConv k=2 + aug (`ncal_spline_aug_conv`) | mean | 25.7k | 47.35 ± 0.15 |
+| multivariate K=8 + aug (`ncal_mv_K8_aug_conv`) | mean | 39.6k | 55.05 ± 0.58 |
+| PointNet conv + aug (`ncal_pointnet_aug_conv`) | max | 3.7k | 54.99 ± 0.84 |
+| SplineConv k=2 + aug (`ncal_spline_max_aug_conv`) | max | 25.7k | 56.00 ± 0.92 |
+| **multivariate K=8 + aug (`ncal_mv_K8_max_aug_conv`)** | max | 39.6k | **57.55 ± 0.42** |
 
 Welch t-tests: `mv_K4` vs `spline` +6.11 (p = 0.001), `mv_K8` vs `spline`
 +5.90 (p = 0.023), `mv_K8_aug` vs `spline_aug` +7.18 (p = 0.001),
 `mv_K8_max` vs `spline_max` +1.80 (p = 0.23), `mv_K8_max` vs `pointnet`
 +3.05 (p = 0.048), `pointnet_mean` vs `pointnet` −10.45 (p < 0.001),
-`spline_max` vs `spline` +10.03 (p = 0.003).
+`spline_max` vs `spline` +10.03 (p = 0.003), `mv_K8_max_aug` vs
+`spline_max_aug` +2.55 (p = 0.006) and vs `pointnet_aug` +2.43 (p = 0.004);
+to convergence: `mv_K8_aug_conv` vs `spline_aug_conv` +7.70 (p = 0.001),
+`mv_K8_max_aug_conv` vs `spline_max_aug_conv` +1.55 (p = 0.08) and vs
+`pointnet_aug_conv` +2.57 (p = 0.019). Training to convergence changes no
+configuration by more than 1.3 points (all p > 0.1 vs the 30-epoch runs).
 
 Reading: with AEGNN's protocol the rational basis adds about 6 points over
 SplineConv at equal K (and K=4 does so with 23% fewer conv parameters); the
@@ -244,6 +258,28 @@ our implementation. The rational runs use the fused Triton kernels
 (`rational_cnn/triton_basis.py`, validated against the eager evaluation on
 `ncal_mv_K8_triton`: 47.85 vs 48.48 with the same seed), which make a
 rational epoch ~1.2x a SplineConv epoch.
+
+**N-Cars** (Prophesee; car vs. background, 100 ms samples), test accuracy
+after 30 epochs of the same network with AEGNN's N-Cars settings (10 000
+events, r = 3, at most 32 neighbours, batch 64, 120 x 100 px), mean ± std
+over 3 seeds; 10% of the training sequences are held out for validation.
+
+| config (`configs.sh` name) | aggr | conv params | final acc |
+|---|---|---|---|
+| SplineConv k=2, K=8 (`ncars_spline`) | mean | 25.7k | 87.83 ± 0.25 |
+| PointNet conv (`ncars_pointnet`) | max | 3.7k | 87.17 ± 0.24 |
+| **multivariate K=4 (`ncars_mv_K4`)** | mean | 19.8k | **90.24 ± 0.39** |
+| **multivariate K=8 (`ncars_mv_K8`)** | mean | 39.6k | **90.49 ± 0.05** |
+| SplineConv k=2 (`ncars_spline_max`) | max | 25.7k | 89.81 ± 0.27 |
+| **multivariate K=8 (`ncars_mv_K8_max`)** | max | 39.6k | **91.00 ± 0.43** |
+| *AEGNN paper* | | | *94.5* |
+
+Welch t-tests: `mv_K8` vs `spline` +2.66 (p = 0.002), `mv_K4` vs `spline`
++2.41 (p = 0.002), `mv_K8_max` vs `spline_max` +1.19 (p = 0.021),
+`spline_max` vs `spline` +1.97 (p = 0.001), `pointnet` vs `spline` −0.66
+(p = 0.03). On N-Cars the rational basis with mean aggregation already beats
+SplineConv with max aggregation (+0.68, p = 0.04), and PointNet is the weakest
+operator.
 
 ## Method summary
 
