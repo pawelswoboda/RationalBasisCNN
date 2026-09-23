@@ -7,7 +7,10 @@ basis functions**, evaluated on
 
 * **PascalVOC-Keypoints** graph matching with Deep Graph Matching Consensus
   (DGMC, Fey et al., ICLR 2020), and
-* **FAUST** shape correspondence (the SplineCNN reference task).
+* **FAUST** shape correspondence (the SplineCNN reference task), and
+* **N-Caltech101** event-camera object recognition with the AEGNN network
+  (Schaefer et al., CVPR 2022), whose SplineConv layers are the operator's
+  main application in event-based vision.
 
 Every layer computes the SplineConv operator
 `x'_i = Θ_root x_i + □_{j∈N(i)} (Σ_p B_p(u_ij) Θ_p) x_j + b`; only the basis
@@ -24,6 +27,8 @@ rational_cnn/            the package
                          (total-degree polynomials in all D coordinates, free K), MLPBasis (control),
                          RationalConv, RationalCNN; hat-fit / PCA-of-hats / vp initialization
   bspline.py             BSplineConv: pure-PyTorch SplineConv (no torch-spline-conv needed)
+  large.py               basis-first aggregation for graphs with ~1e7 edges (large=True in both convs)
+  triton_basis.py        fused Triton kernels for the multivariate rational basis (default on CUDA)
   spline_cnn.py          SplineCNN backbone stack (DGMC ψ networks)
   dgmc.py, data.py       DGMC model and pair datasets (from rusty1s/deep-graph-matching-consensus)
   face_to_edge.py        FaceToEdge tolerant of <3-keypoint graphs (PyG ≥ 2.4 asserts)
@@ -34,6 +39,11 @@ experiments/
   pascal_voc.py          Experiment 1: PascalVOC-Keypoints / DGMC
   faust.py               Experiment 2: FAUST shape correspondence
   spair71k.py            Experiment 3: SPair-71k keypoint matching / DGMC
+  ncaltech101.py         Experiment 3: N-Caltech101 / AEGNN recognition network (also N-Cars)
+  aegnn_net.py           AEGNN GraphRes with pluggable conv (PyG SplineConv, ours, rational, PointNet)
+  event_utils.py         AEGNN event pre-processing (median 50 ms window, fixed 25k events, beta time)
+  prepare_ncaltech101.py one-time download (5.9 GB, Gehrig et al. split) + pre-processing
+  prepare_ncars.py       same for N-Cars (Prophesee .dat; the data is behind a request form)
   backbones.py           --backbone/--rational_basis/--init/... flags shared by both scripts
   wandb_util.py          optional wandb logging (grad/update/param norms, losses, accuracies)
   prepare_pascal_voc.py  one-time dataset download (annotations via the Internet Archive) + VGG16 features
@@ -45,8 +55,11 @@ results/
   analyze.py             aggregates results/logs into the tables below (mean ± std, Welch t-tests)
   logs/pascal_voc/       95 training logs (19 configs × 5 seeds)
   logs/faust/            42 training logs (14 configs × 3 seeds)
-  logs/spair71k/         written by slurm/spair71k.sbatch (no runs yet)
-tests/                   42 pytest tests (basis fits, PCA init, vp gain, conv equivalences, DGMC, SPair-71k, HPatches)
+  logs/spair71k/         90 training logs (18 configs x 5 seeds)
+  logs/ncaltech101/      54 training logs (20 configs, mostly 3 seeds)
+  logs/ncars/            18 training logs (6 configs x 3 seeds)
+tests/                   59 pytest tests (basis fits, PCA init, vp gain, conv / kernel
+                         equivalences, DGMC, SPair-71k, HPatches, regional basis)
 paper/                   rational_basis_draft.tex / .pdf
 ```
 
@@ -94,6 +107,25 @@ protocol follows pygmtools' SPair71k: the fixed trn/val/test pairs of the
 `large` layout, no difficulty filtering, and only keypoints visible in both
 images.
 
+**N-Caltech101** (Orchard et al., CC BY 4.0; the training / validation /
+test split of Gehrig et al., ICCV 2019, 5.9 GB):
+
+```bash
+python experiments/prepare_ncaltech101.py --download   # -> data/NCaltech101, ~2.7 GB processed
+```
+
+Per-batch radius graphs need `torch_cluster` (`pip install torch_cluster`;
+for recent torch/CUDA combinations without wheels, build from source with
+`FORCE_CUDA=1 pip install --no-build-isolation git+https://github.com/rusty1s/pytorch_cluster`).
+`--backbone pyg_spline` (the original fused kernel) additionally needs
+`torch_spline_conv`; without it use `--backbone spline`, our implementation of
+the same operator (identical to 1e-7, faster and leaner on these graphs).
+
+**N-Cars** must be requested from Prophesee
+(https://www.prophesee.ai/2018/03/13/dataset-n-cars/); then
+`python experiments/prepare_ncars.py --src /path/to/extracted` and
+`--dataset ncars` on `ncaltech101.py` (untested: we did not have the data).
+
 Use `--root <dir>` on any script to keep the data elsewhere than `data/`.
 
 ## Running the experiments
@@ -118,6 +150,12 @@ python experiments/faust.py --backbone rational --rational_basis multivariate \
 python experiments/spair71k.py --backbone spline                                           # SplineCNN k=5 (K=25)
 python experiments/spair71k.py --backbone rational --rational_basis multivariate \
        --degrees 8 6 --init pca --vp --num_bases 4 --num_workers 6                         # mv, PCA+vp, K=4
+
+# Experiment 4 — N-Caltech101 / AEGNN (30 epochs, ~7 min/epoch (spline) on an RTX 4070 Ti; seeds 0–2)
+python experiments/ncaltech101.py --backbone spline                                        # AEGNN recognition net, k=2 (K=8)
+python experiments/ncaltech101.py --backbone rational --rational_basis multivariate \
+       --degrees 8 6 --init pca --vp --num_bases 8                                         # mv, K=8
+python experiments/ncaltech101.py --backbone pointnet                                      # Jeziorek et al. replacement
 ```
 
 SPair-71k uses the PascalVOC defaults (not tuned for SPair) over all 53,340
@@ -135,7 +173,13 @@ Defaults are the exact paper settings: PascalVOC — DGMC with ψ₁: 1024→256
 512, 15 epochs, 1000 test samples per category; FAUST — 6 conv layers
 (32, 64×5), ELU, Lin 256, dropout 0.5, Adam lr 0.01 → 0.001 at epoch 61,
 batch 1, 100 epochs, gradient-norm clipping 1.0, `add` aggregation (the PyG
-reference; `--aggr mean` is the paper's operator). Add `--wandb` for Weights &
+reference; `--aggr mean` is the paper's operator); N-Caltech101 — the AEGNN
+recognition network (7 SplineConv layers, kernel size 2, channels
+1 8 16 16 16 32 32 32, BatchNorm, ELU, two voxel max-poolings, no root
+weight / bias, mean aggregation), 25 000 events per sample from the 50 ms
+window before the median event, radius graph r = 5 with at most 32
+neighbours, time scaled by β = 0.5e-5/µs, Adam lr 1e-3, batch 16,
+cross-entropy, lr / 10 after epoch 20, 30 epochs. Add `--wandb` for Weights &
 Biases logging, `--seed N` for the seed.
 
 ### Slurm
@@ -144,6 +188,7 @@ Biases logging, `--seed N` for the seed.
 sbatch slurm/prep_pascal_voc.sbatch                # once
 slurm/submit.sh voc                                 # all paper configs × seeds 0–4
 slurm/submit.sh faust                               # all paper configs × seeds 0–2
+slurm/submit.sh ncal                                # all N-Caltech101 configs × seeds 0–2
 slurm/submit.sh voc mv_K4 mv_K6                     # a subset
 SEEDS="5 6" WANDB=1 slurm/submit.sh faust faust_mv_K8
 sbatch slurm/prep_spair71k.sbatch                  # once, SPair-71k graphs
@@ -197,6 +242,82 @@ unless noted.
 | multivariate K=16 / K=27 (`faust_mv_K16`, `faust_mv_K27`) | 16 / 27 | 2.13M / 2.34M | 70.4 ± 25.2 / 19.0 ± 32.8 |
 | SplineCNN k=5, add, no clip (`faust_spline_noclip`, literal PyG example) | 125 | 4.11M | 29.1 ± 50.3 |
 | SplineCNN k=2 (`faust_spline_k2`) | 8 | 1.95M | 3.4 ± 3.3 |
+
+**N-Caltech101 / AEGNN**, test accuracy after 30 epochs of the AEGNN
+recognition network (7 convolutions, kernel size 2, channels
+1 8 16 16 16 32 32 32, mean aggregation unless noted), mean ± std over 3
+seeds. `conv` counts the parameters of the seven convolutions; PointNet is
+the SplineConv replacement of Jeziorek et al. (2023), `max_j W [x_j, u_ij]`.
+
+| config (`configs.sh` name) | aggr | conv params | final acc |
+|---|---|---|---|
+| SplineConv k=2, K=8 (`ncal_spline`, AEGNN as published) | mean | 25.7k | 42.68 ± 0.81 |
+| SplineConv k=2, PyG fused kernel (`ncal_pyg_spline`, 1 seed) | mean | 25.7k | 41.41 |
+| product rational k=2, hat init (`ncal_rational_k2`, 1 seed) | mean | 26.1k | 43.54 |
+| **multivariate K=4, PCA+vp (`ncal_mv_K4`)** | mean | 19.8k | **48.78 ± 0.77** |
+| **multivariate K=8, PCA+vp (`ncal_mv_K8`)** | mean | 39.6k | **48.57 ± 1.98** |
+| PointNet conv (`ncal_pointnet`) | max | 3.7k | 51.46 ± 1.24 |
+| PointNet conv (`ncal_pointnet_mean`) | mean | 3.7k | 41.01 ± 1.15 |
+| SplineConv k=2 (`ncal_spline_max`) | max | 25.7k | 52.71 ± 1.70 |
+| **multivariate K=8 (`ncal_mv_K8_max`)** | max | 39.6k | **54.51 ± 1.40** |
+| SplineConv k=2 + flip/shift augmentation (`ncal_spline_aug`) | mean | 25.7k | 47.14 ± 0.63 |
+| **multivariate K=8 + augmentation (`ncal_mv_K8_aug`)** | mean | 39.6k | **54.32 ± 0.18** |
+| PointNet conv + augmentation (`ncal_pointnet_aug`) | max | 3.7k | 54.84 ± 0.24 |
+| SplineConv k=2 + augmentation (`ncal_spline_max_aug`) | max | 25.7k | 54.72 ± 0.63 |
+| **multivariate K=8 + augmentation (`ncal_mv_K8_max_aug`)** | max | 39.6k | **57.27 ± 0.46** |
+| *trained to convergence* (`--schedule plateau`: lr/10 on validation plateaus, stop after the 2nd; 51-92 epochs) | | | |
+| SplineConv k=2 + aug (`ncal_spline_aug_conv`) | mean | 25.7k | 47.35 ± 0.15 |
+| multivariate K=8 + aug (`ncal_mv_K8_aug_conv`) | mean | 39.6k | 55.05 ± 0.58 |
+| PointNet conv + aug (`ncal_pointnet_aug_conv`) | max | 3.7k | 54.99 ± 0.84 |
+| SplineConv k=2 + aug (`ncal_spline_max_aug_conv`) | max | 25.7k | 56.00 ± 0.92 |
+| **multivariate K=8 + aug (`ncal_mv_K8_max_aug_conv`)** | max | 39.6k | **57.55 ± 0.42** |
+
+Welch t-tests: `mv_K4` vs `spline` +6.11 (p = 0.001), `mv_K8` vs `spline`
++5.90 (p = 0.023), `mv_K8_aug` vs `spline_aug` +7.18 (p = 0.001),
+`mv_K8_max` vs `spline_max` +1.80 (p = 0.23), `mv_K8_max` vs `pointnet`
++3.05 (p = 0.048), `pointnet_mean` vs `pointnet` −10.45 (p < 0.001),
+`spline_max` vs `spline` +10.03 (p = 0.003), `mv_K8_max_aug` vs
+`spline_max_aug` +2.55 (p = 0.006) and vs `pointnet_aug` +2.43 (p = 0.004);
+to convergence: `mv_K8_aug_conv` vs `spline_aug_conv` +7.70 (p = 0.001),
+`mv_K8_max_aug_conv` vs `spline_max_aug_conv` +1.55 (p = 0.08) and vs
+`pointnet_aug_conv` +2.57 (p = 0.019). Training to convergence changes no
+configuration by more than 1.3 points (all p > 0.1 vs the 30-epoch runs).
+
+Reading: with AEGNN's protocol the rational basis adds about 6 points over
+SplineConv at equal K (and K=4 does so with 23% fewer conv parameters); the
+gain persists under augmentation (+7). PointNet's advantage over SplineConv
+(Jeziorek et al.) is entirely its max aggregation: with mean aggregation it
+drops to SplineConv level, and SplineConv / the rational basis with max
+aggregation gain 10 / 6 points. The absolute numbers are below the 66.8%
+reported for AEGNN: the released code has no training script or
+augmentation, so the published regularisation could not be reproduced; the
+fidelity check with PyG's own SplineConv kernel lands at the same level as
+our implementation. The rational runs use the fused Triton kernels
+(`rational_cnn/triton_basis.py`, validated against the eager evaluation on
+`ncal_mv_K8_triton`: 47.85 vs 48.48 with the same seed), which make a
+rational epoch ~1.2x a SplineConv epoch.
+
+**N-Cars** (Prophesee; car vs. background, 100 ms samples), test accuracy
+after 30 epochs of the same network with AEGNN's N-Cars settings (10 000
+events, r = 3, at most 32 neighbours, batch 64, 120 x 100 px), mean ± std
+over 3 seeds; 10% of the training sequences are held out for validation.
+
+| config (`configs.sh` name) | aggr | conv params | final acc |
+|---|---|---|---|
+| SplineConv k=2, K=8 (`ncars_spline`) | mean | 25.7k | 87.83 ± 0.25 |
+| PointNet conv (`ncars_pointnet`) | max | 3.7k | 87.17 ± 0.24 |
+| **multivariate K=4 (`ncars_mv_K4`)** | mean | 19.8k | **90.24 ± 0.39** |
+| **multivariate K=8 (`ncars_mv_K8`)** | mean | 39.6k | **90.49 ± 0.05** |
+| SplineConv k=2 (`ncars_spline_max`) | max | 25.7k | 89.81 ± 0.27 |
+| **multivariate K=8 (`ncars_mv_K8_max`)** | max | 39.6k | **91.00 ± 0.43** |
+| *AEGNN paper* | | | *94.5* |
+
+Welch t-tests: `mv_K8` vs `spline` +2.66 (p = 0.002), `mv_K4` vs `spline`
++2.41 (p = 0.002), `mv_K8_max` vs `spline_max` +1.19 (p = 0.021),
+`spline_max` vs `spline` +1.97 (p = 0.001), `pointnet` vs `spline` −0.66
+(p = 0.03). On N-Cars the rational basis with mean aggregation already beats
+SplineConv with max aggregation (+0.68, p = 0.04), and PointNet is the weakest
+operator.
 
 ## Method summary
 

@@ -3,6 +3,8 @@ from torch.nn import Parameter
 from torch_geometric.nn import MessagePassing
 from torch_geometric.nn.inits import uniform
 
+from .large import basis_conv, basis_conv_max
+
 
 def open_bspline_1d(u, kernel_size):
     r"""Degree-1 open B-spline basis over :obj:`kernel_size` uniformly spaced
@@ -76,9 +78,10 @@ class BSplineConv(MessagePassing):
     """
     def __init__(self, in_channels, out_channels, dim, kernel_size,
                  root_weight=True, bias=True, aggr='mean',
-                 pyg_init=False):
+                 pyg_init=False, large=False):
         super(BSplineConv, self).__init__(aggr=aggr, node_dim=0)
         self.pyg_init = pyg_init
+        self.large = large
 
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -126,13 +129,22 @@ class BSplineConv(MessagePassing):
     def forward(self, x, edge_index, pseudo):
         """"""
         N, K, C_out = x.size(0), self.num_bases, self.out_channels
-        # Transform node features by all K weight matrices at once; the
-        # per-edge kernel is then a sparse combination of these.
-        xw = x @ self.weight.permute(1, 0, 2).reshape(x.size(1), -1)
-        xw = xw.view(N, K, C_out)
         idx, weight = self.basis(pseudo)
 
-        out = self.propagate(edge_index, xw=xw, idx=idx, weight=weight)
+        if self.large:
+            # Dense basis [E, K] and basis-first aggregation (see
+            # rational_cnn.large); only sensible for small K (kernel_size 2
+            # or 3), where the B-spline basis is (nearly) dense anyway.
+            R = weight.new_zeros(idx.size(0), K).scatter_add_(1, idx, weight)
+            out = basis_conv_max(R, x, edge_index, self.weight) \
+                if self.aggr == 'max' else \
+                basis_conv(R, x, edge_index, self.weight, aggr=self.aggr)
+        else:
+            # Transform node features by all K weight matrices at once; the
+            # per-edge kernel is then a sparse combination of these.
+            xw = x @ self.weight.permute(1, 0, 2).reshape(x.size(1), -1)
+            xw = xw.view(N, K, C_out)
+            out = self.propagate(edge_index, xw=xw, idx=idx, weight=weight)
 
         if self.root is not None:
             out = out + x @ self.root

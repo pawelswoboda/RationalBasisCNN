@@ -1,0 +1,99 @@
+/home/pswoboda/repo/rational-splinecnn/experiments/ncaltech101.py:125: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  return (torch.from_numpy(np.ascontiguousarray(pos)).to(device),
+ncars: 2 classes, 13880 train / 1542 val / 8607 test samples, 10000 events each
+/home/pswoboda/repo/rational-splinecnn/experiments/ncaltech101.py:140: DeprecationWarning: 'torch-cluster' is deprecated and no longer maintained. All functionality has been migrated to 'pyg-lib>=0.7.0' (https://github.com/pyg-team/pyg-lib).
+  import torch_cluster  # noqa: F401
+radius graph: cluster
+basis implementation: triton
+GraphRes(
+  (conv1): RationalConv(1, 8, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm1): BatchNorm(8, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv2): RationalConv(8, 16, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm2): BatchNorm(16, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv3): RationalConv(16, 16, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm3): BatchNorm(16, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv4): RationalConv(16, 16, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm4): BatchNorm(16, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv5): RationalConv(16, 32, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm5): BatchNorm(32, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (pool5): MaxPooling()
+  (conv6): RationalConv(32, 32, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm6): BatchNorm(32, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv7): RationalConv(32, 32, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm7): BatchNorm(32, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (pool7): MaxPoolingX()
+  (fc): Linear(in_features=512, out_features=2, bias=False)
+)
+40880 parameters (39552 in convolutions)
+wandb: Currently logged in as: pswoboda to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run rpum1wwr
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in /home/pswoboda/repo/rational-splinecnn/wandb/wandb/run-20260919_120423-rpum1wwr
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run ncars_ncars_mv_K8_max_seed1
+wandb: ⭐️ View project at https://wandb.ai/pswoboda/rational-splinecnn
+wandb: 🚀 View run at https://wandb.ai/pswoboda/rational-splinecnn/runs/rpum1wwr
+/home/pswoboda/.venv/lib/python3.11/site-packages/torch_geometric/utils/_scatter.py:91: UserWarning: The usage of `scatter(reduce='max')` can be accelerated via the 'torch-scatter' package, but it was not found
+  warnings.warn(
+Epoch: 001, Loss: 0.2722, Train: 88.72, Val: 93.32, Test: 83.83, Time: 239s, Mem: 28.5GB, LR: 1e-03
+Epoch: 002, Loss: 0.1503, Train: 94.21, Val: 95.59, Test: 86.77, Time: 235s, Mem: 28.5GB, LR: 1e-03
+Epoch: 003, Loss: 0.1127, Train: 96.12, Val: 96.50, Test: 89.37, Time: 237s, Mem: 28.5GB, LR: 1e-03
+Epoch: 004, Loss: 0.0896, Train: 96.84, Val: 96.69, Test: 88.01, Time: 238s, Mem: 28.5GB, LR: 1e-03
+Epoch: 005, Loss: 0.0734, Train: 97.44, Val: 96.95, Test: 89.37, Time: 237s, Mem: 28.5GB, LR: 1e-03
+Epoch: 006, Loss: 0.0652, Train: 97.80, Val: 97.60, Test: 89.43, Time: 237s, Mem: 28.5GB, LR: 1e-03
+Epoch: 007, Loss: 0.0550, Train: 98.05, Val: 97.86, Test: 90.39, Time: 232s, Mem: 28.5GB, LR: 1e-03
+Epoch: 008, Loss: 0.0547, Train: 98.08, Val: 96.43, Test: 88.58, Time: 237s, Mem: 28.5GB, LR: 1e-03
+Epoch: 009, Loss: 0.0445, Train: 98.41, Val: 97.47, Test: 89.38, Time: 237s, Mem: 28.5GB, LR: 1e-03
+Epoch: 010, Loss: 0.0325, Train: 98.97, Val: 97.73, Test: 90.64, Time: 237s, Mem: 28.6GB, LR: 1e-03
+Epoch: 011, Loss: 0.0307, Train: 98.90, Val: 97.73, Test: 90.32, Time: 234s, Mem: 28.6GB, LR: 1e-03
+Epoch: 012, Loss: 0.0345, Train: 98.88, Val: 97.60, Test: 89.87, Time: 236s, Mem: 28.6GB, LR: 1e-03
+Epoch: 013, Loss: 0.0294, Train: 98.99, Val: 97.15, Test: 90.76, Time: 235s, Mem: 28.6GB, LR: 1e-03
+Epoch: 014, Loss: 0.0301, Train: 98.96, Val: 97.60, Test: 90.09, Time: 232s, Mem: 28.6GB, LR: 1e-03
+Epoch: 015, Loss: 0.0229, Train: 99.14, Val: 97.80, Test: 90.79, Time: 236s, Mem: 28.6GB, LR: 1e-03
+Epoch: 016, Loss: 0.0204, Train: 99.29, Val: 97.99, Test: 90.47, Time: 236s, Mem: 28.6GB, LR: 1e-03
+Epoch: 017, Loss: 0.0139, Train: 99.60, Val: 97.99, Test: 90.73, Time: 237s, Mem: 28.6GB, LR: 1e-03
+Epoch: 018, Loss: 0.0239, Train: 99.21, Val: 96.89, Test: 89.83, Time: 237s, Mem: 28.6GB, LR: 1e-03
+Epoch: 019, Loss: 0.0199, Train: 99.29, Val: 96.89, Test: 89.69, Time: 233s, Mem: 28.6GB, LR: 1e-03
+Epoch: 020, Loss: 0.0183, Train: 99.32, Val: 97.47, Test: 90.02, Time: 237s, Mem: 28.6GB, LR: 1e-04
+Epoch: 021, Loss: 0.0094, Train: 99.67, Val: 98.12, Test: 91.11, Time: 235s, Mem: 28.6GB, LR: 1e-04
+Epoch: 022, Loss: 0.0055, Train: 99.88, Val: 98.05, Test: 91.34, Time: 235s, Mem: 28.6GB, LR: 1e-04
+Epoch: 023, Loss: 0.0040, Train: 99.95, Val: 98.05, Test: 91.27, Time: 237s, Mem: 28.6GB, LR: 1e-04
+Epoch: 024, Loss: 0.0034, Train: 99.98, Val: 98.12, Test: 91.25, Time: 236s, Mem: 28.6GB, LR: 1e-04
+Epoch: 025, Loss: 0.0030, Train: 99.99, Val: 97.99, Test: 91.31, Time: 237s, Mem: 28.6GB, LR: 1e-04
+Epoch: 026, Loss: 0.0029, Train: 99.97, Val: 98.12, Test: 91.38, Time: 235s, Mem: 28.6GB, LR: 1e-04
+Epoch: 027, Loss: 0.0023, Train: 99.99, Val: 98.18, Test: 91.40, Time: 235s, Mem: 28.6GB, LR: 1e-04
+Epoch: 028, Loss: 0.0021, Train: 99.99, Val: 98.25, Test: 91.34, Time: 236s, Mem: 28.6GB, LR: 1e-04
+Epoch: 029, Loss: 0.0020, Train: 100.00, Val: 98.12, Test: 91.37, Time: 236s, Mem: 28.6GB, LR: 1e-04
+Epoch: 030, Loss: 0.0018, Train: 99.99, Val: 98.12, Test: 91.44, Time: 233s, Mem: 28.6GB, LR: 1e-04
+Best val 98.25 at epoch 28 (30 epochs trained)
+Final test accuracy: 91.44 (best 91.34)
+wandb: updating run metadata
+wandb: uploading output.log
+wandb: uploading history steps 28-29, summary, console lines 31-33
+wandb: 
+wandb: Run history:
+wandb: epoch_time █▄▆▇▇▆▁▆▆▆▃▅▄▁▆▅▇▆▂▆▄▄▆▅▆▄▄▅▅▂
+wandb:       loss █▅▄▃▃▃▂▂▂▂▂▂▂▂▂▁▁▂▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:         lr ███████████████████▁▁▁▁▁▁▁▁▁▁▁
+wandb:   test_acc ▁▄▆▅▆▆▇▅▆▇▇▇▇▇▇▇▇▇▆▇██████████
+wandb:  train_acc ▁▄▆▆▆▇▇▇▇▇▇▇▇▇▇███████████████
+wandb:    val_acc ▁▄▆▆▆▇▇▅▇▇▇▇▆▇▇██▆▆▇██████████
+wandb: 
+wandb: Run summary:
+wandb:       best_epoch 28
+wandb:     best_val_acc 98.24903
+wandb:      conv_params 39552
+wandb:       epoch_time 233.01653
+wandb:   final_test_acc 91.4372
+wandb:             loss 0.00178
+wandb:               lr 0.0001
+wandb:       num_params 40880
+wandb:         test_acc 91.4372
+wandb: test_at_best_val 91.34425
+wandb:               +2 ...
+wandb: 
+wandb: 🚀 View run ncars_ncars_mv_K8_max_seed1 at: https://wandb.ai/pswoboda/rational-splinecnn/runs/rpum1wwr
+wandb: ⭐️ View project at: https://wandb.ai/pswoboda/rational-splinecnn
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/wandb/run-20260919_120423-rpum1wwr/logs
+DONE

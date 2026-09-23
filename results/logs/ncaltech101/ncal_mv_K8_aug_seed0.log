@@ -1,0 +1,102 @@
+/home/pswoboda/repo/rational-splinecnn/experiments/ncaltech101.py:115: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  return (torch.from_numpy(np.ascontiguousarray(pos)).to(device),
+ncaltech101: 101 classes, 4356 train / 2612 val / 1741 test samples, 25000 events each
+/home/pswoboda/repo/rational-splinecnn/experiments/ncaltech101.py:130: DeprecationWarning: 'torch-cluster' is deprecated and no longer maintained. All functionality has been migrated to 'pyg-lib>=0.7.0' (https://github.com/pyg-team/pyg-lib).
+  import torch_cluster  # noqa: F401
+radius graph: cluster
+basis implementation: compile
+GraphRes(
+  (conv1): RationalConv(1, 8, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm1): BatchNorm(8, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv2): RationalConv(8, 16, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm2): BatchNorm(16, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv3): RationalConv(16, 16, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm3): BatchNorm(16, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv4): RationalConv(16, 16, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm4): BatchNorm(16, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv5): RationalConv(16, 32, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm5): BatchNorm(32, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (pool5): MaxPooling()
+  (conv6): RationalConv(32, 32, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm6): BatchNorm(32, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv7): RationalConv(32, 32, dim=3, kernel_size=[2, 2, 2], vp=True, basis=MultivariateRationalBasis(dim=3, kernel_size=[2, 2, 2], num_bases=8, degrees=(8, 6), safe=B, poly=chebyshev, init=pca))
+  (norm7): BatchNorm(32, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (pool7): MaxPoolingX()
+  (fc): Linear(in_features=512, out_features=101, bias=False)
+)
+91568 parameters (39552 in convolutions)
+wandb: Currently logged in as: pswoboda to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run 33jmkmmx
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in /home/pswoboda/repo/rational-splinecnn/wandb/wandb/run-20260917_215309-33jmkmmx
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run ncaltech101_ncal_mv_K8_aug_seed0
+wandb: ⭐️ View project at https://wandb.ai/pswoboda/rational-splinecnn
+wandb: 🚀 View run at https://wandb.ai/pswoboda/rational-splinecnn/runs/33jmkmmx
+/home/pswoboda/.venv/lib/python3.11/site-packages/torch/_inductor/compile_fx.py:320: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+  warnings.warn(
+/home/pswoboda/.venv/lib/python3.11/site-packages/torch_geometric/utils/_scatter.py:91: UserWarning: The usage of `scatter(reduce='max')` can be accelerated via the 'torch-scatter' package, but it was not found
+  warnings.warn(
+Epoch: 001, Loss: 4.2004, Train: 20.55, Val: 25.96, Test: 26.65, Time: 364s, Mem: 8.8GB
+/home/pswoboda/.venv/lib/python3.11/site-packages/torch_geometric/utils/_scatter.py:91: UserWarning: The usage of `scatter(reduce='max')` can be accelerated via the 'torch-scatter' package, but it was not found
+  warnings.warn(
+Epoch: 002, Loss: 3.5367, Train: 26.40, Val: 30.17, Test: 30.61, Time: 354s, Mem: 8.8GB
+Epoch: 003, Loss: 3.1352, Train: 30.60, Val: 35.11, Test: 34.98, Time: 355s, Mem: 8.8GB
+Epoch: 004, Loss: 2.8375, Train: 36.20, Val: 36.79, Test: 36.76, Time: 354s, Mem: 8.8GB
+Epoch: 005, Loss: 2.6187, Train: 40.06, Val: 40.51, Test: 40.38, Time: 354s, Mem: 8.8GB
+Epoch: 006, Loss: 2.4415, Train: 42.19, Val: 42.73, Test: 42.27, Time: 355s, Mem: 8.8GB
+Epoch: 007, Loss: 2.2944, Train: 44.86, Val: 45.41, Test: 45.32, Time: 355s, Mem: 8.8GB
+Epoch: 008, Loss: 2.1760, Train: 47.50, Val: 47.66, Test: 47.33, Time: 355s, Mem: 8.8GB
+Epoch: 009, Loss: 2.0410, Train: 50.60, Val: 45.98, Test: 45.95, Time: 355s, Mem: 8.8GB
+Epoch: 010, Loss: 1.9300, Train: 52.71, Val: 48.39, Test: 47.56, Time: 355s, Mem: 8.8GB
+Epoch: 011, Loss: 1.8429, Train: 53.79, Val: 50.42, Test: 50.20, Time: 356s, Mem: 8.8GB
+Epoch: 012, Loss: 1.7485, Train: 56.34, Val: 48.70, Test: 49.17, Time: 355s, Mem: 8.8GB
+Epoch: 013, Loss: 1.6946, Train: 56.63, Val: 50.23, Test: 51.75, Time: 356s, Mem: 8.8GB
+Epoch: 014, Loss: 1.5978, Train: 60.15, Val: 51.45, Test: 50.43, Time: 355s, Mem: 8.8GB
+Epoch: 015, Loss: 1.5007, Train: 61.66, Val: 52.26, Test: 53.02, Time: 356s, Mem: 8.8GB
+Epoch: 016, Loss: 1.4733, Train: 62.24, Val: 51.91, Test: 51.58, Time: 356s, Mem: 8.8GB
+Epoch: 017, Loss: 1.4059, Train: 63.54, Val: 51.99, Test: 52.44, Time: 355s, Mem: 8.8GB
+Epoch: 018, Loss: 1.3596, Train: 64.62, Val: 51.91, Test: 51.75, Time: 356s, Mem: 8.8GB
+Epoch: 019, Loss: 1.3095, Train: 65.75, Val: 53.14, Test: 52.04, Time: 356s, Mem: 8.8GB
+Epoch: 020, Loss: 1.2904, Train: 65.75, Val: 52.53, Test: 52.10, Time: 356s, Mem: 8.8GB
+Epoch: 021, Loss: 1.0935, Train: 70.73, Val: 53.48, Test: 53.70, Time: 356s, Mem: 8.8GB
+Epoch: 022, Loss: 1.0117, Train: 72.50, Val: 54.17, Test: 54.85, Time: 356s, Mem: 8.8GB
+Epoch: 023, Loss: 0.9723, Train: 73.92, Val: 54.33, Test: 54.45, Time: 355s, Mem: 8.8GB
+Epoch: 024, Loss: 0.9654, Train: 73.92, Val: 55.02, Test: 54.34, Time: 356s, Mem: 8.8GB
+Epoch: 025, Loss: 0.9394, Train: 74.15, Val: 54.94, Test: 54.34, Time: 355s, Mem: 8.8GB
+Epoch: 026, Loss: 0.9181, Train: 75.05, Val: 54.67, Test: 53.70, Time: 356s, Mem: 8.8GB
+Epoch: 027, Loss: 0.9092, Train: 74.72, Val: 55.02, Test: 53.93, Time: 355s, Mem: 8.8GB
+Epoch: 028, Loss: 0.9007, Train: 74.82, Val: 55.09, Test: 54.28, Time: 355s, Mem: 8.8GB
+Epoch: 029, Loss: 0.9113, Train: 74.77, Val: 54.82, Test: 53.65, Time: 355s, Mem: 8.8GB
+Epoch: 030, Loss: 0.9105, Train: 75.16, Val: 55.05, Test: 54.11, Time: 356s, Mem: 8.8GB
+Best val 55.09 at epoch 28
+Final test accuracy: 54.11 (best 54.28)
+wandb: updating run metadata
+wandb: uploading history steps 28-29, summary, console lines 35-37
+wandb: 
+wandb: Run history:
+wandb: epoch_time █▁▁▁▁▁▂▂▂▂▂▂▂▁▂▂▁▂▂▂▂▂▂▂▁▂▂▂▁▂
+wandb:       loss █▇▆▅▅▄▄▄▃▃▃▃▃▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁
+wandb:         lr ███████████████████▁▁▁▁▁▁▁▁▁▁▁
+wandb:   test_acc ▁▂▃▄▄▅▆▆▆▆▇▇▇▇█▇▇▇▇▇██████████
+wandb:  train_acc ▁▂▂▃▄▄▄▄▅▅▅▆▆▆▆▆▇▇▇▇▇█████████
+wandb:    val_acc ▁▂▃▄▄▅▆▆▆▆▇▆▇▇▇▇▇▇█▇██████████
+wandb: 
+wandb: Run summary:
+wandb:       best_epoch 28
+wandb:     best_val_acc 55.09188
+wandb:      conv_params 39552
+wandb:       epoch_time 355.72768
+wandb:   final_test_acc 54.10684
+wandb:             loss 0.91046
+wandb:               lr 0.0001
+wandb:       num_params 91568
+wandb:         test_acc 54.10684
+wandb: test_at_best_val 54.27915
+wandb:               +2 ...
+wandb: 
+wandb: 🚀 View run ncaltech101_ncal_mv_K8_aug_seed0 at: https://wandb.ai/pswoboda/rational-splinecnn/runs/33jmkmmx
+wandb: ⭐️ View project at: https://wandb.ai/pswoboda/rational-splinecnn
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/wandb/run-20260917_215309-33jmkmmx/logs
+DONE

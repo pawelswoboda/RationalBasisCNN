@@ -1,0 +1,98 @@
+/home/pswoboda/repo/rational-splinecnn/experiments/ncaltech101.py:125: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  return (torch.from_numpy(np.ascontiguousarray(pos)).to(device),
+ncars: 2 classes, 13880 train / 1542 val / 8607 test samples, 10000 events each
+/home/pswoboda/repo/rational-splinecnn/experiments/ncaltech101.py:140: DeprecationWarning: 'torch-cluster' is deprecated and no longer maintained. All functionality has been migrated to 'pyg-lib>=0.7.0' (https://github.com/pyg-team/pyg-lib).
+  import torch_cluster  # noqa: F401
+radius graph: cluster
+GraphRes(
+  (conv1): BSplineConv(1, 8, dim=3, kernel_size=[2, 2, 2])
+  (norm1): BatchNorm(8, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv2): BSplineConv(8, 16, dim=3, kernel_size=[2, 2, 2])
+  (norm2): BatchNorm(16, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv3): BSplineConv(16, 16, dim=3, kernel_size=[2, 2, 2])
+  (norm3): BatchNorm(16, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv4): BSplineConv(16, 16, dim=3, kernel_size=[2, 2, 2])
+  (norm4): BatchNorm(16, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv5): BSplineConv(16, 32, dim=3, kernel_size=[2, 2, 2])
+  (norm5): BatchNorm(32, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (pool5): MaxPooling()
+  (conv6): BSplineConv(32, 32, dim=3, kernel_size=[2, 2, 2])
+  (norm6): BatchNorm(32, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (conv7): BSplineConv(32, 32, dim=3, kernel_size=[2, 2, 2])
+  (norm7): BatchNorm(32, eps=1e-05, momentum=0.1, affine=True, bias=True, track_running_stats=True)
+  (pool7): MaxPoolingX()
+  (fc): Linear(in_features=512, out_features=2, bias=False)
+)
+26992 parameters (25664 in convolutions)
+wandb: Currently logged in as: pswoboda to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run ksvtbsyr
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in /home/pswoboda/repo/rational-splinecnn/wandb/wandb/run-20260919_061539-ksvtbsyr
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run ncars_ncars_spline_seed2
+wandb: ⭐️ View project at https://wandb.ai/pswoboda/rational-splinecnn
+wandb: 🚀 View run at https://wandb.ai/pswoboda/rational-splinecnn/runs/ksvtbsyr
+/home/pswoboda/.venv/lib/python3.11/site-packages/torch_geometric/utils/_scatter.py:91: UserWarning: The usage of `scatter(reduce='max')` can be accelerated via the 'torch-scatter' package, but it was not found
+  warnings.warn(
+Epoch: 001, Loss: 0.3811, Train: 84.21, Val: 83.85, Test: 77.15, Time: 258s, Mem: 12.1GB, LR: 1e-03
+Epoch: 002, Loss: 0.2688, Train: 89.37, Val: 89.04, Test: 81.15, Time: 258s, Mem: 12.1GB, LR: 1e-03
+Epoch: 003, Loss: 0.2188, Train: 91.58, Val: 89.56, Test: 80.86, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 004, Loss: 0.1996, Train: 92.31, Val: 92.15, Test: 84.50, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 005, Loss: 0.1696, Train: 93.70, Val: 92.87, Test: 84.27, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 006, Loss: 0.1526, Train: 94.40, Val: 83.33, Test: 75.35, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 007, Loss: 0.1418, Train: 94.60, Val: 94.49, Test: 85.84, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 008, Loss: 0.1248, Train: 95.37, Val: 94.68, Test: 85.81, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 009, Loss: 0.1145, Train: 95.74, Val: 94.36, Test: 86.51, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 010, Loss: 0.1135, Train: 95.79, Val: 94.16, Test: 85.98, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 011, Loss: 0.0995, Train: 96.25, Val: 94.42, Test: 86.13, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 012, Loss: 0.0987, Train: 96.28, Val: 94.62, Test: 85.93, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 013, Loss: 0.0919, Train: 96.51, Val: 93.64, Test: 84.23, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 014, Loss: 0.0848, Train: 97.02, Val: 94.49, Test: 85.79, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 015, Loss: 0.0780, Train: 97.10, Val: 94.10, Test: 86.52, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 016, Loss: 0.0768, Train: 97.20, Val: 93.26, Test: 83.85, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 017, Loss: 0.0695, Train: 97.31, Val: 86.64, Test: 78.69, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 018, Loss: 0.0705, Train: 97.33, Val: 88.46, Test: 76.09, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 019, Loss: 0.0656, Train: 97.58, Val: 94.03, Test: 86.00, Time: 258s, Mem: 12.2GB, LR: 1e-03
+Epoch: 020, Loss: 0.0629, Train: 97.63, Val: 94.75, Test: 85.90, Time: 258s, Mem: 12.2GB, LR: 1e-04
+Epoch: 021, Loss: 0.0409, Train: 98.67, Val: 95.91, Test: 87.64, Time: 258s, Mem: 12.2GB, LR: 1e-04
+Epoch: 022, Loss: 0.0339, Train: 98.95, Val: 96.30, Test: 87.68, Time: 258s, Mem: 12.2GB, LR: 1e-04
+Epoch: 023, Loss: 0.0320, Train: 99.08, Val: 96.37, Test: 87.53, Time: 258s, Mem: 12.2GB, LR: 1e-04
+Epoch: 024, Loss: 0.0303, Train: 99.09, Val: 96.37, Test: 87.96, Time: 258s, Mem: 12.2GB, LR: 1e-04
+Epoch: 025, Loss: 0.0289, Train: 99.19, Val: 96.24, Test: 87.81, Time: 258s, Mem: 12.2GB, LR: 1e-04
+Epoch: 026, Loss: 0.0276, Train: 99.22, Val: 96.11, Test: 88.00, Time: 258s, Mem: 12.2GB, LR: 1e-04
+Epoch: 027, Loss: 0.0270, Train: 99.24, Val: 95.91, Test: 87.79, Time: 258s, Mem: 12.2GB, LR: 1e-04
+Epoch: 028, Loss: 0.0275, Train: 99.21, Val: 95.78, Test: 87.74, Time: 258s, Mem: 12.2GB, LR: 1e-04
+Epoch: 029, Loss: 0.0281, Train: 99.21, Val: 96.11, Test: 87.72, Time: 258s, Mem: 12.2GB, LR: 1e-04
+Epoch: 030, Loss: 0.0251, Train: 99.29, Val: 96.50, Test: 87.92, Time: 258s, Mem: 12.2GB, LR: 1e-04
+Best val 96.50 at epoch 30 (30 epochs trained)
+Final test accuracy: 87.92 (best 87.92)
+wandb: updating run metadata
+wandb: uploading output.log; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 28-29, summary, console lines 31-33
+wandb: 
+wandb: Run history:
+wandb: epoch_time █▂▂▂▂▃▂▂▂▂▂▂▂▃▂▂▃▁▂▂▁▂▃▂▂▂▂▂▃▂
+wandb:       loss █▆▅▄▄▄▃▃▃▃▂▂▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁
+wandb:         lr ███████████████████▁▁▁▁▁▁▁▁▁▁▁
+wandb:   test_acc ▂▄▄▆▆▁▇▇▇▇▇▇▆▇▇▆▃▁▇▇██████████
+wandb:  train_acc ▁▃▄▅▅▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇██████████
+wandb:    val_acc ▁▄▄▆▆▁▇▇▇▇▇▇▆▇▇▆▃▄▇▇██████████
+wandb: 
+wandb: Run summary:
+wandb:       best_epoch 30
+wandb:     best_val_acc 96.49805
+wandb:      conv_params 25664
+wandb:       epoch_time 258.14839
+wandb:   final_test_acc 87.91681
+wandb:             loss 0.02509
+wandb:               lr 0.0001
+wandb:       num_params 26992
+wandb:         test_acc 87.91681
+wandb: test_at_best_val 87.91681
+wandb:               +2 ...
+wandb: 
+wandb: 🚀 View run ncars_ncars_spline_seed2 at: https://wandb.ai/pswoboda/rational-splinecnn/runs/ksvtbsyr
+wandb: ⭐️ View project at: https://wandb.ai/pswoboda/rational-splinecnn
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/wandb/run-20260919_061539-ksvtbsyr/logs
+DONE

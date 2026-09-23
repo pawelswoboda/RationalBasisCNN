@@ -3,12 +3,15 @@
 # Usage: slurm/submit.sh voc   [configs...]   (default: the PascalVOC configs of the paper, seeds 0-4)
 #        slurm/submit.sh faust [configs...]   (default: the FAUST configs of the paper, seeds 0-2)
 #        slurm/submit.sh spair [configs...]   (default: the PascalVOC paper configs on SPair-71k, seeds 0-4)
+#        slurm/submit.sh ncal  [configs...]   (default: the N-Caltech101/AEGNN configs, seeds 0-2)
+#        slurm/submit.sh ncars [configs...]   (default: the N-Cars/AEGNN configs, seeds 0-2)
 # Env: SEEDS="0 1 2" overrides the seed list; PYTHON, WANDB, EPOCHS (and for
-# spair LAYOUT, NUM_WORKERS) are passed through. DRY_RUN=1 prints the jobs
-# without submitting anything.
+# spair LAYOUT, NUM_WORKERS) are passed through; GRES=gpu:rtx5090:1 pins a GPU
+# type (e.g. for the ~25 GB max-aggregation N-Cars runs). DRY_RUN=1 prints the
+# jobs without submitting anything.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
-WHAT="${1:?usage: slurm/submit.sh voc|faust|spair [configs...]}"; shift || true
+WHAT="${1:?usage: slurm/submit.sh voc|faust|spair|ncal|ncars [configs...]}"; shift || true
 mkdir -p slurm/logs
 case "$WHAT" in
   voc)
@@ -28,6 +31,12 @@ case "$WHAT" in
       echo "       then 'bash hpc/promote_dataset.sh SPair71k' on a login node." >&2
       exit 1
     fi ;;
+  ncal)
+    CONFIGS=("$@"); [ ${#CONFIGS[@]} -eq 0 ] && CONFIGS=(ncal_spline ncal_mv_K8 ncal_mv_K4 ncal_mv_K16 ncal_mv_K8_d54 ncal_pointnet ncal_mlp_K8 ncal_spline_k3 ncal_rational_k2)
+    SEEDS=(${SEEDS:-0 1 2}); SBATCH=slurm/ncaltech101.sbatch ;;
+  ncars)
+    CONFIGS=("$@"); [ ${#CONFIGS[@]} -eq 0 ] && CONFIGS=(ncars_spline ncars_mv_K8 ncars_mv_K4 ncars_pointnet ncars_spline_max ncars_mv_K8_max)
+    SEEDS=(${SEEDS:-0 1 2}); SBATCH=slurm/ncars.sbatch ;;
   *) echo "unknown target '$WHAT'" >&2; exit 1 ;;
 esac
 source slurm/configs.sh
@@ -35,10 +44,10 @@ for c in "${CONFIGS[@]}"; do
   config_args "$c" >/dev/null   # fail early on unknown config
   for s in "${SEEDS[@]}"; do
     if [ -n "${DRY_RUN:-}" ]; then
-      echo "[dry run] CONFIG=$c SEED=$s sbatch --job-name=$WHAT-$c-s$s $SBATCH"
+      echo "[dry run] CONFIG=$c SEED=$s sbatch --job-name=$WHAT-$c-s$s ${GRES:+--gres=$GRES} $SBATCH"
       continue
     fi
-    id=$(CONFIG="$c" SEED="$s" sbatch --parsable --job-name="$WHAT-$c-s$s" "$SBATCH")
+    id=$(CONFIG="$c" SEED="$s" sbatch --parsable --job-name="$WHAT-$c-s$s" ${GRES:+--gres=$GRES} "$SBATCH")
     echo "$WHAT $c seed $s -> job $id"
   done
 done

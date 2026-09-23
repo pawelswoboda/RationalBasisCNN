@@ -45,6 +45,40 @@ config_args() {
     faust_mv_K27) echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 27" ;;
     faust_mv_K4_mean) echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 4 --aggr mean" ;;
     faust_mlp_K8) echo "--backbone rational --rational_basis mlp --vp --num_bases 8" ;;
+    # ---- N-Caltech101 / AEGNN (experiments/ncaltech101.py, 3-D pseudo-coordinates, k=2) ----
+    ncal_pyg_spline)  echo "--backbone pyg_spline" ;;   # AEGNN as released (torch_spline_conv)
+    ncal_spline)      echo "--backbone spline" ;;       # same operator, our implementation (K=8)
+    ncal_spline_k3)   echo "--backbone spline --kernel_size 3" ;;  # K=27
+    ncal_mv_K4)   echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 4" ;;
+    ncal_mv_K8)   echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8" ;;
+    ncal_mv_K8_triton) echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --basis_impl triton" ;;  # kernel validation run
+    ncal_mv_K16)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 16" ;;
+    ncal_mv_K8_d54) echo "--backbone rational --rational_basis multivariate --degrees 5 4 --init pca --vp --num_bases 8" ;;
+    ncal_mv_K4_d54) echo "--backbone rational --rational_basis multivariate --degrees 5 4 --init pca --vp --num_bases 4" ;;
+    ncal_rational_k2) echo "--backbone rational --kernel_size 2" ;;  # product basis, spline init, K=8
+    ncal_mlp_K8)  echo "--backbone rational --rational_basis mlp --vp --num_bases 8" ;;
+    ncal_pointnet) echo "--backbone pointnet" ;;        # Jeziorek et al. 2023 replacement
+    ncal_spline_max) echo "--backbone spline --aggr max" ;;   # max instead of mean aggregation
+    ncal_mv_K8_max)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --aggr max" ;;
+    ncal_pointnet_mean) echo "--backbone pointnet --pointnet_aggr mean" ;;
+    ncal_spline_max_aug) echo "--backbone spline --aggr max --augment" ;;
+    ncal_mv_K8_max_aug)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --aggr max --augment" ;;
+    # trained to convergence (submit with EPOCHS=200 as the cap): lr/10 on validation plateaus, stop after the 2nd decay plateaus
+    ncal_spline_aug_conv)     echo "--backbone spline --augment --schedule plateau" ;;
+    ncal_mv_K8_aug_conv)      echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --augment --schedule plateau" ;;
+    ncal_pointnet_aug_conv)   echo "--backbone pointnet --augment --schedule plateau" ;;
+    ncal_spline_max_aug_conv) echo "--backbone spline --aggr max --augment --schedule plateau" ;;
+    ncal_mv_K8_max_aug_conv)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --aggr max --augment --schedule plateau" ;;
+    ncal_spline_aug) echo "--backbone spline --augment" ;;   # + flip / translation augmentation
+    ncal_mv_K8_aug)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --augment" ;;
+    ncal_pointnet_aug) echo "--backbone pointnet --augment" ;;
+    # ---- N-Cars / AEGNN (experiments/ncaltech101.py --dataset ncars: r=3, 10k events, batch 64, 120x100) ----
+    ncars_spline)     echo "--backbone spline" ;;
+    ncars_mv_K4)      echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 4" ;;
+    ncars_mv_K8)      echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8" ;;
+    ncars_pointnet)   echo "--backbone pointnet" ;;
+    ncars_spline_max) echo "--backbone spline --aggr max" ;;
+    ncars_mv_K8_max)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 8 --aggr max" ;;
     *) echo "unknown config '$1'" >&2; return 1 ;;
   esac
 }

@@ -8,6 +8,7 @@ from torch_geometric.nn import MessagePassing
 from torch_geometric.nn.inits import uniform
 
 from .bspline import open_bspline_basis_1d, bspline_basis
+from .large import basis_conv, basis_conv_max, chunked_basis
 
 
 def poly_features(t, degree, poly='chebyshev'):
@@ -71,14 +72,15 @@ def multivariate_poly_features(t, indices, poly='chebyshev'):
     tensor of shape :obj:`[..., len(indices)]`."""
     dim = t.size(-1)
     degree = max(max(a) for a in indices)
-    phi = [poly_features(t[..., d], degree, poly) for d in range(dim)]
-    feats = []
-    for a in indices:
-        f = phi[0][..., a[0]]
-        for d in range(1, dim):
-            f = f * phi[d][..., a[d]]
-        feats.append(f)
-    return torch.stack(feats, dim=-1)
+    # [..., dim, degree + 1] one-dimensional features, then one gather per
+    # dimension (vectorised over the multi-indices).
+    phi = torch.stack([poly_features(t[..., d], degree, poly)
+                       for d in range(dim)], dim=-2)
+    idx = torch.tensor(indices, device=t.device, dtype=torch.long)
+    out = phi[..., 0, :].index_select(-1, idx[:, 0])
+    for d in range(1, dim):
+        out = out * phi[..., d, :].index_select(-1, idx[:, d])
+    return out
 
 
 def gauss_basis_1d(u, kernel_size, width=0.5):
@@ -477,9 +479,22 @@ class MultivariateRationalBasis(torch.nn.Module):
             Q = 1 + phi_den.abs() @ denominator.abs().t()
         return P / Q
 
+    def fused(self, pseudo):
+        r"""Whether :meth:`forward` will use the fused Triton kernels
+        (:mod:`rational_cnn.triton_basis`) for :obj:`pseudo`."""
+        from . import triton_basis
+        return triton_basis.available(pseudo)
+
     def forward(self, pseudo):
         r"""Evaluates all basis functions at :obj:`pseudo` of shape
-        :obj:`[E, dim]`, returning a tensor of shape :obj:`[E, num_bases]`."""
+        :obj:`[E, dim]`, returning a tensor of shape :obj:`[E, num_bases]`.
+        On CUDA the fused Triton kernels are used (set
+        :obj:`RATIONAL_BASIS_IMPL=eager` to disable)."""
+        if self.fused(pseudo):
+            from .triton_basis import rational_basis
+            return rational_basis(pseudo, self.numerator, self.denominator,
+                                  self.num_indices, self.den_indices,
+                                  self.safe, self.poly)
         return self.evaluate(pseudo, self.numerator, self.denominator)
 
     @property
@@ -780,9 +795,10 @@ class RationalConv(MessagePassing):
     """
     def __init__(self, in_channels, out_channels, dim, kernel_size,
                  root_weight=True, bias=True, basis='product', vp=False,
-                 aggr='mean', pyg_init=False, **kwargs):
+                 aggr='mean', pyg_init=False, large=False, **kwargs):
         super(RationalConv, self).__init__(aggr=aggr, node_dim=0)
         self.pyg_init = pyg_init
+        self.large = large
 
         assert basis in ['product', 'multivariate', 'mlp', 'regional']
         self.in_channels = in_channels
@@ -839,9 +855,17 @@ class RationalConv(MessagePassing):
         """"""
         N, K, C_in, C_out = x.size(0), self.num_bases, self.in_channels, \
             self.out_channels
-        R = self.basis(pseudo)  # [E, K]
+        fused = getattr(self.basis, 'fused', lambda u: False)(pseudo)
+        R = chunked_basis(self.basis, pseudo) if self.large and not fused \
+            else self.basis(pseudo)  # [E, K]
 
-        if C_out <= C_in:
+        if self.large:
+            # Basis-first aggregation, O(E C_in) transient memory (see
+            # rational_cnn.large), for graphs with ~1e7 edges.
+            out = basis_conv_max(R, x, edge_index, self.weight) \
+                if self.aggr == 'max' else \
+                basis_conv(R, x, edge_index, self.weight, aggr=self.aggr)
+        elif C_out <= C_in:
             # Transform node features by all K weight matrices, then combine
             # per edge: memory E * K * C_out.
             xw = x @ self.weight.permute(1, 0, 2).reshape(C_in, -1)
