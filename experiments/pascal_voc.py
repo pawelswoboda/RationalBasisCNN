@@ -2,6 +2,7 @@ r"""PascalVOC-Keypoints matching with Deep Graph Matching Consensus (Fey et
 al., ICLR 2020), with a SplineCNN or rational-basis backbone. Run
 `python experiments/prepare_pascal_voc.py` once first (dataset download +
 VGG16 feature extraction)."""
+import os
 import os.path as osp
 import sys
 import time
@@ -14,6 +15,8 @@ from torch_geometric.loader import DataLoader
 
 ROOT = osp.dirname(osp.dirname(osp.abspath(__file__)))
 sys.path.insert(0, ROOT)
+# Redirected to project storage by hpc/env.sh; $HOME is quota-limited.
+DEFAULT_ROOT = os.environ.get('RBCNN_DATA_ROOT', osp.join(ROOT, 'data'))
 from rational_cnn import DGMC, ValidPairDataset, FaceToEdge  # noqa: E402
 from backbones import add_backbone_args, make_backbone, describe, make_optimizer
 from wandb_util import add_wandb_args, init_wandb, StepMeter
@@ -29,7 +32,7 @@ parser.add_argument('--batch_size', type=int, default=512)
 parser.add_argument('--epochs', type=int, default=15)
 parser.add_argument('--test_samples', type=int, default=1000)
 parser.add_argument('--seed', type=int, default=0)
-parser.add_argument('--root', type=str, default=osp.join(ROOT, 'data'),
+parser.add_argument('--root', type=str, default=DEFAULT_ROOT,
                     help='dataset root containing PascalVOC/')
 add_backbone_args(parser)
 add_wandb_args(parser)

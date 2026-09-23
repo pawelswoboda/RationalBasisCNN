@@ -4,7 +4,12 @@ paper draft:  python results/analyze.py
 PascalVOC: per-seed final/best mean-over-categories accuracy (last epoch),
 Welch t-tests between the configurations discussed in the paper.
 FAUST: per-seed final/best vertex accuracy from the 'Final test accuracy'
-line."""
+line.
+SPair-71k: per-seed final / at-best-val / best pair-averaged test accuracy
+(mean over 18 categories) and the final keypoint-weighted accuracy.
+
+    python results/analyze.py [--logs DIR]"""
+import argparse
 import glob
 import os.path as osp
 import re
@@ -13,7 +18,11 @@ from collections import defaultdict
 import numpy as np
 from scipy import stats
 
-LOGS = osp.join(osp.dirname(osp.abspath(__file__)), 'logs')
+parser = argparse.ArgumentParser()
+parser.add_argument('--logs', default=osp.join(osp.dirname(osp.abspath(__file__)), 'logs'),
+                    help='directory holding pascal_voc/, faust/, spair71k/ '
+                    '(default: results/logs)')
+LOGS = parser.parse_args().logs
 
 
 def sd(x):
@@ -131,3 +140,65 @@ welch(fa, [('faust_mv_K8', 'faust_spline_mean'), ('faust_mv_K4', 'faust_spline_m
            ('faust_spline_mean', 'faust_spline'),
            ('faust_spline_pyginit', 'faust_spline'),
            ('faust_mv_K4', 'faust_mv_K4_mean')], lambda r: r['final'])
+
+# ---------------------------------------------------------------- SPair-71k
+print('\n' + '=' * 78)
+print('SPair-71k keypoint matching (DGMC, large layout, all test pairs, mean '
+      'over 18 categories; pair-averaged unless noted)')
+sp = defaultdict(list)
+sp_partial = defaultdict(list)
+sp_cats = None
+for f in sorted(glob.glob(osp.join(LOGS, 'spair71k', '*_seed*.log'))):
+    cfg, seed = re.match(r'.*/(.*)_seed(\d+)\.log', f).groups()
+    lines = open(f).read().splitlines()
+    rows = defaultdict(list)
+    for line in lines:
+        toks = line.split()
+        if toks and toks[0] == 'split':
+            sp_cats = toks[1:-1]
+        elif toks and toks[0] in ('val', 'test', 'test_kp') and len(toks) == 20:
+            rows[toks[0]].append([float(t) for t in toks[1:]])
+    if not any(line.startswith('DONE') for line in lines) or not rows['test']:
+        sp_partial[cfg].append(f"seed{seed}@{len(rows['test'])}ev")
+        continue
+    params = next((int(re.search(r'(\d+) parameters', line).group(1))
+                   for line in lines if 'parameters' in line), None)
+    times = [float(m.group(1)) for line in lines
+             for m in [re.search(r'Time: ([\d.]+)s', line)] if m]
+    val, test, kp = (np.array(rows[k]) for k in ('val', 'test', 'test_kp'))
+    b = int(val[:, -1].argmax())
+    sp[cfg].append(dict(params=params, final=test[-1], best=test[:, -1].max(),
+                        at_best_val=test[b, -1], kp=kp[-1, -1],
+                        time=np.mean(times[1:]) if len(times) > 1 else
+                        np.mean(times)))
+if sp_partial:
+    print('incomplete runs (excluded):', dict(sp_partial))
+if not sp:
+    print('no completed SPair-71k runs yet (slurm/submit.sh spair)')
+else:
+    SP_CFGS = [c for c in ORDER if sp[c]] + sorted(set(sp) - set(ORDER))
+    print(f"{'config':24s} {'params':>8s} {'seeds':>5s} {'final acc':>14s} "
+          f"{'@best val':>14s} {'best acc':>14s} {'final kp acc':>14s} "
+          f"{'s/epoch':>8s}")
+    for cfg in SP_CFGS:
+        rs = sp[cfg]
+        cols = [np.array([r[k] for r in rs]) for k in ('at_best_val', 'best', 'kp')]
+        fin = np.array([r['final'][-1] for r in rs])
+        print(f"{cfg:24s} {rs[0]['params']:8d} {len(rs):5d} "
+              f"{fin.mean():7.2f} ± {sd(fin):4.2f} " +
+              ' '.join(f'{c.mean():7.2f} ± {sd(c):4.2f}' for c in cols) +
+              f" {np.mean([r['time'] for r in rs]):8.1f}")
+    if sp_cats and sp['spline'] and sp['rational_mv_k3']:
+        print('\nper-category final acc (mean over seeds):')
+        print(f"{'category':11s} {'spline':>7s} {'mv_k3':>7s} {'diff':>6s}")
+        for i, c in enumerate(sp_cats):
+            a = np.mean([r['final'][i] for r in sp['spline']])
+            m = np.mean([r['final'][i] for r in sp['rational_mv_k3']])
+            print(f'{c:11s} {a:7.1f} {m:7.1f} {m - a:+6.1f}')
+    print('\nWelch t-tests (final acc):')
+    welch(sp, [('rational_mv_k3', 'spline'), ('rational_mv_k3', 'rational_k3'),
+               ('rational_mv_k3', 'spline_k3'), ('mv_K4', 'spline'),
+               ('mv_K4', 'mlp_K4'), ('mv_K4', 'spline_k2'),
+               ('mv_K9', 'mlp_K9'), ('mv_K16', 'mv_K9'),
+               ('rational', 'spline'), ('rational_k3', 'spline_k3')],
+          lambda r: r['final'][-1])

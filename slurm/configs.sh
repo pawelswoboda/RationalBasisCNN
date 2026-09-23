@@ -4,6 +4,7 @@
 config_args() {
   case "$1" in
     # ---- PascalVOC (experiments/pascal_voc.py, 2-D pseudo-coordinates) ----
+    # ---- also SPair-71k (experiments/spair71k.py): same DGMC, same 2-D graphs
     spline)    echo "--backbone spline" ;;                       # SplineCNN k=5, K=25
     spline_k3) echo "--backbone spline --kernel_size 3" ;;       # K=9
     spline_k2) echo "--backbone spline --kernel_size 2" ;;       # K=4
@@ -21,6 +22,12 @@ config_args() {
     mv_K9)  echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 9" ;;
     mv_K16) echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 16" ;;
     mv_K4_wd) echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 4 --basis_wd 1e-4" ;;
+    # ---- regional basis: rationals confined to radial zones, K = zones * bases_per_zone ----
+    zone_K4) echo "--backbone rational --rational_basis regional --zones 4 --bases_per_zone 1 --degrees 8 6 --vp" ;;
+    zone_K9) echo "--backbone rational --rational_basis regional --zones 3 --bases_per_zone 3 --degrees 8 6 --vp" ;;
+    # ---- fixed-basis controls: the shapes stay at init, only Theta trains ----
+    mv_K4_frozen) echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 4 --freeze_basis" ;;
+    mv_K9_frozen) echo "--backbone rational --rational_basis multivariate --degrees 8 6 --init pca --vp --num_bases 9 --freeze_basis" ;;
     mlp_K4) echo "--backbone rational --rational_basis mlp --vp --num_bases 4" ;;
     mlp_K9) echo "--backbone rational --rational_basis mlp --vp --num_bases 9" ;;
     # ---- FAUST (experiments/faust.py, 3-D pseudo-coordinates) ----

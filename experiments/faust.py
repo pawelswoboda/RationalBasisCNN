@@ -7,6 +7,7 @@ http://faust.is.tue.mpg.de/) in `data/FAUST/raw/`; see
 reproduces the reference model (kernel 5^3 = 125 basis functions),
 `--backbone rational --rational_basis multivariate --num_bases K --init pca`
 replaces the basis with K learnable rational functions."""
+import os
 import os.path as osp
 import sys
 import time
@@ -21,6 +22,8 @@ from torch_geometric.loader import DataLoader
 
 ROOT = osp.dirname(osp.dirname(osp.abspath(__file__)))
 sys.path.insert(0, ROOT)
+# Redirected to project storage by hpc/env.sh; $HOME is quota-limited.
+DEFAULT_ROOT = os.environ.get('RBCNN_DATA_ROOT', osp.join(ROOT, 'data'))
 from rational_cnn import FaceToEdge, read_ply  # noqa: E402
 
 faust_module.read_ply = read_ply
@@ -37,7 +40,7 @@ parser.add_argument('--lr_decay_epoch', type=int, default=61,
 parser.add_argument('--epochs', type=int, default=100)
 parser.add_argument('--batch_size', type=int, default=1)
 parser.add_argument('--seed', type=int, default=0)
-parser.add_argument('--root', type=str, default=osp.join(ROOT, 'data'),
+parser.add_argument('--root', type=str, default=DEFAULT_ROOT,
                     help='dataset root containing FAUST/')
 parser.add_argument('--eval_every', type=int, default=1)
 parser.add_argument('--clip', type=float, default=1.0,

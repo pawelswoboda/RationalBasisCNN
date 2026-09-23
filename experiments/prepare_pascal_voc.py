@@ -20,13 +20,15 @@ from torch_geometric.io import fs
 
 ROOT = osp.dirname(osp.dirname(osp.abspath(__file__)))
 sys.path.insert(0, ROOT)
+# Redirected to project storage by hpc/env.sh; $HOME is quota-limited.
+DEFAULT_ROOT = os.environ.get('RBCNN_DATA_ROOT', osp.join(ROOT, 'data'))
 
 ANNOTATION_URL = ('https://web.archive.org/web/20240416142946id_/'
                   'https://www2.eecs.berkeley.edu/Research/Projects/CS/'
                   'vision/shape/poselets/voc2011_keypoints_Feb2012.tgz')
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root', type=str, default=osp.join(ROOT, 'data'))
+parser.add_argument('--root', type=str, default=DEFAULT_ROOT)
 args = parser.parse_args()
 
 path = osp.join(args.root, 'PascalVOC')

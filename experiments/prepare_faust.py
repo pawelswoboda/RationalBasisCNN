@@ -21,12 +21,14 @@ from torch_geometric.datasets import FAUST
 
 ROOT = osp.dirname(osp.dirname(osp.abspath(__file__)))
 sys.path.insert(0, ROOT)
+# Redirected to project storage by hpc/env.sh; $HOME is quota-limited.
+DEFAULT_ROOT = os.environ.get('RBCNN_DATA_ROOT', osp.join(ROOT, 'data'))
 from rational_cnn import FaceToEdge, read_ply  # noqa: E402
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--src', type=str, required=True,
                     help='MPI-FAUST.zip or the unzipped MPI-FAUST directory')
-parser.add_argument('--root', type=str, default=osp.join(ROOT, 'data'))
+parser.add_argument('--root', type=str, default=DEFAULT_ROOT)
 args = parser.parse_args()
 
 path = osp.join(args.root, 'FAUST')

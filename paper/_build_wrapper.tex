@@ -1,0 +1,18 @@
+% Build wrapper -- NOT part of the paper.
+%
+% rational_basis_iclr2027.tex uses three macros that are defined nowhere in the
+% sources shipped in paper.zip:  \ours, \bz, \N.  Without them pdflatex aborts at
+% the abstract.  This wrapper supplies fallbacks with \providecommand, so it is a
+% no-op the moment the real definitions arrive from the co-authors, and compiles
+% the paper without touching rational_basis_iclr2027.tex itself.
+%
+% Build with:   ./_build.sh
+% Delete this file once \ours, \bz and \N are defined in the paper preamble.
+
+\RequirePackage{etoolbox}
+\AtEndPreamble{%
+  \providecommand{\ours}{RBF-GNN}%
+  \providecommand{\bz}{\mathbf{z}}%
+  \providecommand{\N}{\mathbb{N}}%
+}
+\input{rational_basis_iclr2027.tex}

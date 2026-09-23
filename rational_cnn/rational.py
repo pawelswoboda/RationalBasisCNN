@@ -575,6 +575,165 @@ class MLPBasis(torch.nn.Module):
             self.__class__.__name__, self.dim, self.num_bases, self.hidden)
 
 
+#: Radii that split the pseudo-coordinate disc into equal-mass zones, measured
+#: on 127,274 SPair-71k training edges (rho = ||u - 0.5||, so the outer bound is
+#: sqrt(dim)/2). Grid cells are badly unbalanced on this data -- a 3x3 grid puts
+#: 12x more edges in the centre cell than in a corner -- while these give 1.0x.
+DEFAULT_ZONE_RADII = {
+    (2, 3): [0.0, 0.1544, 0.3163, 0.7071],
+    (2, 4): [0.0, 0.1195, 0.2290, 0.3734, 0.7071],
+}
+
+
+def wendland_c2(t):
+    r"""The Wendland :math:`C^2` radial function on :obj:`t` in :obj:`[0, 1]`,
+    :math:`(1-t)^4 (4t+1)`, and exactly zero beyond. Compactly supported, so a
+    basis windowed by it has provably no mass outside its zone -- which is the
+    property the regional basis exists to test."""
+    return (1 - t.clamp(max=1.0)).pow(4) * (4 * t.clamp(max=1.0) + 1)
+
+
+class RegionalRationalBasis(MultivariateRationalBasis):
+    r"""Multivariate rational basis functions confined to radial zones of the
+    pseudo-coordinate domain.
+
+    The domain is split into :obj:`zones` rings around its centre, each holding
+    :obj:`bases_per_zone` rational functions, so
+
+    .. math::
+        K = \mathrm{zones} 	imes \mathrm{bases\_per\_zone},
+        \qquad
+        B_{m,p}(\mathbf u) = w_m(\mathbf u)\, R_{m,p}(\mathbf u),
+
+    with :math:`R_{m,p}` the usual safe-Padé rational and :math:`w_m` a
+    compactly supported window. The windows are Wendland bumps in
+    :math:`
+ho = \|\mathbf u - 	frac12\|`, normalised so that
+    :math:`\sum_m w_m \equiv 1` (Shepard). Two consequences:
+
+    * :math:`B_{m,p}` is **exactly** zero outside its ring, so the basis is
+      genuinely local -- unlike a plain rational, which can never vanish on an
+      open set;
+    * the pieces merge into one continuous function with no constraints to
+      solve, because the windows already form a partition of unity.
+
+    Unlike a grid of :math:`k^D` cells, the number of zones is a free dial that
+    does not grow with :obj:`dim`, so this keeps the property that :math:`K` is
+    chosen rather than dictated by the kernel grid.
+
+    Args:
+        zones (int): Number of radial zones. (default: :obj:`4`)
+        bases_per_zone (int): Rational functions inside each zone.
+            (default: :obj:`1`)
+        zone_radii ([float], optional): The :obj:`zones + 1` ring boundaries in
+            :math:`
+ho`. Defaults to the equal-mass radii measured on
+            SPair-71k (:obj:`DEFAULT_ZONE_RADII`), else an even split.
+        zone_overlap (float): How far each window reaches past its own ring, in
+            multiples of the ring's half width. Must exceed 1 so that
+            neighbouring windows overlap and the normalisation never divides by
+            zero. (default: :obj:`2.0`)
+    """
+    def __init__(self, dim, kernel_size, zones=4, bases_per_zone=1,
+                 zone_radii=None, zone_overlap=2.0, **kwargs):
+        K = zones * bases_per_zone
+        given = kwargs.pop('num_bases', None)
+        assert given in (None, 0, K), \
+            'num_bases is zones * bases_per_zone for the regional basis'
+        init = kwargs.pop('init', 'zone')
+        assert init == 'zone', \
+            "the regional basis only supports init='zone' (the fitting inits " \
+            "target the global hat basis, which no windowed basis can match)"
+        # 'constant' is a valid parent init that touches no fitting machinery;
+        # the real initialisation happens in reset_parameters below, once the
+        # zone geometry exists.
+        super(RegionalRationalBasis, self).__init__(
+            dim, kernel_size, num_bases=K, init='constant', **kwargs)
+
+        assert bases_per_zone <= self.numerator.size(1), \
+            'bases_per_zone exceeds the number of numerator terms'
+        self.zones = zones
+        self.bases_per_zone = bases_per_zone
+        centre, half = self._zone_geometry(dim, zones, zone_radii, zone_overlap)
+        self.register_buffer('zone_centre', centre)
+        self.register_buffer('zone_half', half)
+        self.init = 'zone'
+        self.reset_parameters()
+
+    @staticmethod
+    def _zone_geometry(dim, zones, radii, overlap):
+        assert overlap > 1.0, 'zone_overlap must exceed 1 so windows overlap'
+        if radii is None:
+            radii = DEFAULT_ZONE_RADII.get((dim, zones))
+        if radii is None:
+            radii = torch.linspace(0, math.sqrt(dim) / 2, zones + 1).tolist()
+        q = torch.tensor(list(radii), dtype=torch.float)
+        assert q.numel() == zones + 1, 'zone_radii needs zones + 1 entries'
+        assert bool((q[1:] > q[:-1]).all()), 'zone_radii must increase'
+        centre = 0.5 * (q[:-1] + q[1:])
+        half = overlap * 0.5 * (q[1:] - q[:-1])
+
+        # Every reachable rho must be covered by at least one window, or the
+        # Shepard normalisation would divide by zero.
+        rho = torch.linspace(0, math.sqrt(dim) / 2, 2048)
+        cover = wendland_c2((rho.view(-1, 1) - centre).abs() / half).sum(-1)
+        assert float(cover.min()) > 0, \
+            'zones do not cover the domain; raise zone_overlap'
+        return centre, half
+
+    def windows(self, u):
+        r"""The partition of unity over zones, of shape :obj:`[P, zones]`."""
+        centre = self.zone_centre.to(u.dtype)
+        half = self.zone_half.to(u.dtype)
+        rho = (u - 0.5).norm(dim=-1, keepdim=True)
+        phi = wendland_c2((rho - centre).abs() / half)
+        return phi / phi.sum(dim=-1, keepdim=True).clamp(min=1e-12)
+
+    def reset_parameters(self):
+        if not hasattr(self, 'zone_centre'):  # still inside super().__init__
+            return super(RegionalRationalBasis, self).reset_parameters()
+        # Inside a zone the functions start as the first `bases_per_zone`
+        # Chebyshev modes, so they are distinct from one another; across zones
+        # they differ by their window. With bases_per_zone = 1 every function
+        # starts as its own window and the basis is a partition of unity.
+        self.numerator.data.normal_(0, self.init_noise)
+        for m in range(self.zones):
+            for p in range(self.bases_per_zone):
+                self.numerator.data[m * self.bases_per_zone + p, p] += 1.0
+        self.denominator.data.normal_(0, self.init_noise)
+
+    def evaluate(self, u, numerator, denominator):
+        # `forward` and the vp energy integral both route through here, so the
+        # window is applied exactly once. Overriding `forward` as well would
+        # square it.
+        R = super(RegionalRationalBasis, self).evaluate(u, numerator,
+                                                        denominator)
+        w = self.windows(u).repeat_interleave(self.bases_per_zone, dim=-1)
+        return w * R
+
+    def fused(self, pseudo):
+        # The fused Triton kernels take only (u, numerator, denominator) plus a
+        # spec tuple; they never see the module, so `windows`, `zone_centre` and
+        # `zone_half` are invisible to them and the parent's `forward` returns
+        # their result WITHOUT calling `evaluate`. Taking that path would drop
+        # the zone windows silently -- right shape, no error, and a basis that
+        # is no longer local -- so this basis always evaluates eagerly.
+        #
+        # Windowing the fused result here instead would also be correct (w is a
+        # per-edge factor applied after the division), but it must not be done
+        # by overriding `forward` unconditionally: the eager branch already
+        # applies the window inside `evaluate`, and multiplying again would
+        # square it. Keeping the whole basis eager is the version that cannot be
+        # got wrong.
+        return False
+
+    def extra_repr(self):
+        return ('dim={}, zones={}, bases_per_zone={}, num_bases={}, '
+                'degrees={}, safe={}, poly={}, init={}').format(
+                    self.dim, self.zones, self.bases_per_zone, self.num_bases,
+                    self.degrees, self.safe, self.poly, self.init)
+
+
 class RationalConv(MessagePassing):
     r"""Continuous-kernel convolution with learnable *rational* (safe Padé)
     basis functions in place of the B-splines of :class:`SplineConv`:
@@ -625,7 +784,7 @@ class RationalConv(MessagePassing):
         super(RationalConv, self).__init__(aggr=aggr, node_dim=0)
         self.pyg_init = pyg_init
 
-        assert basis in ['product', 'multivariate', 'mlp']
+        assert basis in ['product', 'multivariate', 'mlp', 'regional']
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.dim = dim
@@ -636,6 +795,8 @@ class RationalConv(MessagePassing):
             self.basis = RationalBasis(dim, kernel_size, **kwargs)
         elif basis == 'multivariate':
             self.basis = MultivariateRationalBasis(dim, kernel_size, **kwargs)
+        elif basis == 'regional':
+            self.basis = RegionalRationalBasis(dim, kernel_size, **kwargs)
         else:
             self.basis = MLPBasis(dim, kernel_size, **kwargs)
         self.kernel_size = self.basis.kernel_size

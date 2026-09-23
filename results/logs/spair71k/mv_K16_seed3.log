@@ -1,0 +1,80 @@
+SPair-71k (large layout): 53340 train / 5384 val / 12234 test pairs
+DGMC with 6264705 parameters
+Epoch: 01, Loss: 1.5253, Acc: 0.78, Time: 11.4s, Eval: 3.4s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     59.3  68.3  85.5  78.7  77.2  86.3  89.0  80.3  64.4  75.2  61.6  73.7  71.2  74.1  95.9  82.9  95.5  93.5  78.5 
+test    64.1  53.6  85.0  77.3  67.8  95.6  86.6  72.6  65.9  80.8  71.4  71.1  70.2  69.0  95.3  80.7  94.6  98.9  77.8 
+test_kp 58.7  53.5  82.5  74.8  66.3  95.1  86.7  71.5  63.9  78.4  73.7  70.0  70.3  66.6  95.7  76.8  95.1  99.0  76.6 
+Epoch: 02, Loss: 0.3062, Acc: 0.98, Time: 10.7s, Eval: 2.5s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     59.9  64.3  85.2  80.8  79.5  85.3  89.9  81.0  58.9  77.5  66.4  71.8  73.4  75.1  93.6  83.5  95.0  93.5  78.6 
+test    64.1  55.8  82.9  74.7  65.5  95.0  86.3  70.3  67.2  78.7  73.0  67.1  71.3  68.4  93.6  75.6  93.3  98.8  76.8 
+test_kp 58.9  56.0  79.7  71.4  64.3  94.7  86.9  69.3  64.4  76.3  75.1  67.0  71.3  65.2  94.8  72.7  93.8  98.9  75.6 
+Epoch: 03, Loss: 0.1228, Acc: 1.00, Time: 10.6s, Eval: 2.4s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     61.3  62.6  87.1  78.2  78.5  85.7  88.7  80.1  62.4  78.1  64.5  70.2  72.3  73.9  95.0  82.1  93.0  94.6  78.2 
+test    65.4  53.5  84.7  73.5  66.3  94.6  85.1  70.2  68.2  79.5  70.9  66.6  68.6  67.7  95.3  77.6  94.4  98.8  76.7 
+test_kp 59.5  53.2  81.0  70.4  64.9  94.7  85.6  69.1  64.9  77.7  73.0  65.6  69.0  64.4  95.2  74.6  94.1  99.1  75.3 
+Epoch: 04, Loss: 0.0839, Acc: 1.00, Time: 10.6s, Eval: 2.5s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     60.3  64.2  85.6  76.6  77.7  83.3  87.5  79.7  59.8  77.2  64.8  69.5  73.3  74.4  94.8  84.7  93.9  93.8  77.8 
+test    64.2  52.1  84.3  72.8  66.0  94.5  84.9  70.2  65.5  78.5  71.6  68.3  71.1  66.3  97.3  76.6  94.2  97.9  76.5 
+test_kp 59.0  52.5  81.3  69.1  64.3  94.3  85.9  69.2  63.3  76.7  74.1  67.5  71.2  63.5  97.4  72.6  93.8  98.1  75.2 
+Epoch: 05, Loss: 0.0569, Acc: 1.00, Time: 10.7s, Eval: 2.4s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     62.1  66.0  86.5  80.9  78.7  84.1  88.5  80.0  60.8  77.3  64.1  70.9  76.8  72.3  93.6  81.6  94.6  95.5  78.6 
+test    64.3  52.1  83.8  72.1  66.8  95.5  82.4  70.7  66.7  79.6  71.2  67.3  69.5  66.4  95.6  73.9  93.5  97.9  76.1 
+test_kp 59.2  52.3  80.6  68.3  64.8  95.4  83.3  70.0  64.6  77.4  73.6  66.6  69.5  63.2  95.7  70.3  93.5  98.2  74.8 
+Epoch: 06, Loss: 0.0434, Acc: 1.00, Time: 10.8s, Eval: 2.4s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     61.9  63.9  85.1  77.6  78.2  84.9  86.7  78.4  60.3  78.1  62.8  69.7  77.7  72.4  95.1  82.5  92.9  93.5  77.9 
+test    63.0  50.9  83.7  68.9  66.2  93.7  85.1  70.3  63.3  77.6  71.3  67.0  70.5  67.9  95.6  75.3  92.4  98.2  75.6 
+test_kp 57.9  50.3  80.6  65.5  64.1  94.1  85.4  69.8  60.9  76.3  73.6  66.4  70.7  65.3  95.5  72.2  92.3  98.7  74.4 
+Epoch: 07, Loss: 0.0434, Acc: 1.00, Time: 10.6s, Eval: 2.4s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     62.4  65.2  85.3  81.6  78.2  83.3  89.2  82.0  62.3  78.9  64.1  70.3  74.2  74.7  92.7  82.7  92.9  94.4  78.6 
+test    63.8  53.1  81.9  71.9  65.2  93.6  85.0  70.9  62.9  80.0  70.6  66.1  67.9  68.1  95.8  77.2  91.6  96.6  75.7 
+test_kp 58.9  52.4  78.8  68.2  63.2  94.0  85.7  70.0  59.6  78.3  72.9  65.2  67.9  64.3  95.6  73.7  91.6  97.0  74.3 
+Epoch: 08, Loss: 0.0437, Acc: 1.00, Time: 10.6s, Eval: 2.5s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     60.1  65.5  84.6  78.4  78.2  80.1  89.3  79.2  59.7  77.4  62.5  66.2  74.3  72.6  93.2  81.3  93.1  94.1  77.2 
+test    62.6  50.3  82.0  71.3  65.2  93.9  85.0  69.8  65.3  78.6  69.9  65.3  69.1  66.1  95.9  75.7  91.5  97.2  75.3 
+test_kp 57.2  49.5  78.8  67.9  63.3  94.2  85.9  68.9  61.7  76.6  71.7  64.3  68.5  62.0  95.6  71.8  91.5  97.5  73.7 
+Epoch: 09, Loss: 0.0373, Acc: 1.00, Time: 10.6s, Eval: 2.5s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     61.2  62.2  85.8  81.3  76.4  87.0  88.8  81.2  59.5  78.4  62.4  69.4  76.4  72.8  92.8  82.9  91.5  94.3  78.0 
+test    64.3  52.7  83.5  71.6  65.1  94.4  85.1  69.3  65.3  78.2  71.0  64.5  70.0  69.0  94.0  75.0  91.6  97.3  75.7 
+test_kp 59.0  52.3  80.7  67.9  63.4  94.4  85.4  68.6  62.5  76.2  73.3  63.4  69.5  65.2  94.6  69.8  92.0  97.6  74.2 
+Epoch: 10, Loss: 0.0304, Acc: 1.00, Time: 10.6s, Eval: 2.4s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     59.0  62.9  83.5  81.2  78.8  85.3  88.0  82.0  61.0  78.2  62.5  68.6  69.5  71.1  93.7  83.6  90.8  94.6  77.5 
+test    62.1  50.8  84.6  71.6  64.8  90.3  84.4  69.1  65.6  77.5  70.9  65.4  67.6  66.4  95.7  71.9  91.4  97.1  74.8 
+test_kp 56.4  50.9  81.8  68.2  63.0  91.6  85.6  68.0  64.0  76.5  73.0  64.1  66.9  63.2  95.2  69.4  91.8  97.6  73.7 
+Epoch: 11, Loss: 0.0486, Acc: 1.00, Time: 10.7s, Eval: 2.5s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     60.1  63.3  83.5  74.4  77.2  85.9  85.3  81.3  58.9  77.6  58.2  72.2  74.1  72.8  94.0  83.9  93.5  95.8  77.3 
+test    63.0  52.6  82.7  71.3  64.8  92.4  80.6  68.6  65.4  78.9  70.3  64.8  69.0  65.9  93.3  75.6  90.1  98.1  74.9 
+test_kp 57.9  51.8  79.4  67.6  63.0  92.7  82.4  67.7  62.0  77.0  72.0  63.5  68.3  63.1  94.2  70.6  90.9  98.6  73.5 
+Epoch: 12, Loss: 0.0351, Acc: 1.00, Time: 10.7s, Eval: 2.4s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     60.3  65.7  84.1  76.4  76.5  83.6  87.5  83.0  55.9  77.0  60.8  68.2  73.2  72.0  92.1  82.9  93.1  94.9  77.1 
+test    63.6  51.8  84.4  71.0  66.2  93.8  85.6  70.1  65.1  78.4  71.3  65.9  70.5  68.5  94.2  72.1  91.2  97.9  75.6 
+test_kp 59.1  51.5  81.4  67.2  64.5  93.9  85.3  69.2  61.8  77.1  73.4  64.7  70.2  64.9  93.9  68.3  91.6  98.4  74.2 
+Epoch: 13, Loss: 0.0235, Acc: 1.00, Time: 10.7s, Eval: 2.4s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     60.8  62.2  85.6  78.9  76.0  86.4  86.1  82.7  56.6  78.9  62.3  70.3  75.1  70.3  92.2  84.9  91.7  93.8  77.5 
+test    63.8  50.8  84.5  72.9  65.3  93.0  84.4  69.3  64.8  79.5  72.9  64.9  69.1  67.7  95.6  71.6  89.2  98.2  75.4 
+test_kp 58.9  50.9  82.4  69.6  63.6  93.4  84.3  68.6  62.0  77.6  74.9  63.6  68.5  64.5  95.3  68.2  90.0  98.6  74.2 
+Epoch: 14, Loss: 0.0220, Acc: 1.00, Time: 10.6s, Eval: 2.5s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     61.5  63.1  85.5  78.3  78.0  86.8  88.6  80.9  59.2  77.2  60.0  70.4  73.2  72.2  89.7  82.8  93.6  95.4  77.6 
+test    64.3  51.4  86.0  72.9  67.3  93.6  84.7  70.5  65.5  80.7  72.1  64.0  69.0  67.6  95.7  74.1  88.4  97.3  75.8 
+test_kp 59.6  50.9  82.9  69.6  65.4  93.7  85.0  69.8  62.2  78.8  74.2  63.0  68.8  64.6  95.7  69.4  90.2  97.8  74.5 
+Epoch: 15, Loss: 0.0186, Acc: 1.00, Time: 10.8s, Eval: 2.5s
+split   aerop bicyc bird  boat  bottl bus   car   cat   chair cow   dog   horse motor perso potte sheep train tvmon mean
+val     56.0  59.9  83.1  72.8  75.8  81.6  87.0  81.3  55.0  73.1  60.6  67.5  69.6  71.2  88.3  81.2  90.7  93.7  74.9 
+test    61.2  47.3  80.9  66.3  64.9  91.8  80.1  68.4  59.9  77.4  69.4  61.7  61.7  63.1  93.6  70.6  87.6  96.8  72.4 
+test_kp 56.3  46.9  78.5  62.8  63.4  92.2  79.9  67.5  56.3  75.5  71.4  60.6  61.5  59.6  94.6  66.2  88.6  97.6  71.1 
+Final test accuracy: 72.37 (best 77.81, at best val epoch 2: 76.75)
+Final test keypoint accuracy: 71.07
+DONE

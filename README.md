@@ -28,19 +28,25 @@ rational_cnn/            the package
   dgmc.py, data.py       DGMC model and pair datasets (from rusty1s/deep-graph-matching-consensus)
   face_to_edge.py        FaceToEdge tolerant of <3-keypoint graphs (PyG ≥ 2.4 asserts)
   ply.py                 plyfile-based .ply reader for FAUST (PyG's needs openmesh)
+  hpatches.py            HPatches loading, Shi-Tomasi detector, distractors, transfer arms
+  spair.py               SPair71k (VGG16 keypoint graphs + pair tables), SPair71kPairs, MatchingAccuracy
 experiments/
   pascal_voc.py          Experiment 1: PascalVOC-Keypoints / DGMC
   faust.py               Experiment 2: FAUST shape correspondence
+  spair71k.py            Experiment 3: SPair-71k keypoint matching / DGMC
   backbones.py           --backbone/--rational_basis/--init/... flags shared by both scripts
   wandb_util.py          optional wandb logging (grad/update/param norms, losses, accuracies)
   prepare_pascal_voc.py  one-time dataset download (annotations via the Internet Archive) + VGG16 features
   prepare_faust.py       one-time placement + processing of MPI-FAUST.zip
+  prepare_spair71k.py    one-time VGG16 feature extraction + pair tables for SPair-71k
+  hpatches_transfer.py   out-of-task transfer of a trained refinement, measured on HPatches
 slurm/                   configs.sh (every named configuration), sbatch runners, submit.sh
 results/
   analyze.py             aggregates results/logs into the tables below (mean ± std, Welch t-tests)
   logs/pascal_voc/       95 training logs (19 configs × 5 seeds)
   logs/faust/            42 training logs (14 configs × 3 seeds)
-tests/                   27 pytest tests (basis fits, PCA init, vp gain, conv equivalences, DGMC)
+  logs/spair71k/         written by slurm/spair71k.sbatch (no runs yet)
+tests/                   42 pytest tests (basis fits, PCA init, vp gain, conv equivalences, DGMC, SPair-71k, HPatches)
 paper/                   rational_basis_draft.tex / .pdf
 ```
 
@@ -74,6 +80,20 @@ forbids redistribution). Then:
 python experiments/prepare_faust.py --src /path/to/MPI-FAUST.zip    # or the unzipped MPI-FAUST/ dir
 ```
 
+**SPair-71k** (Min et al., 2019; 18 categories, 1,800 images, 70,958 annotated
+pairs). Extract `SPair-71k.tar.gz` to `data/SPair-71k` (on PC2:
+`bash hpc/download_spair71k.sh`), then build the graphs once:
+
+```bash
+python experiments/prepare_spair71k.py              # -> data/SPair71k/processed
+```
+
+Node features follow PyG's PascalVOCKeypoints exactly (box grown to all
+keypoints + 16 px, 256×256 crop, VGG16 relu4_2 + relu5_1). The benchmark
+protocol follows pygmtools' SPair71k: the fixed trn/val/test pairs of the
+`large` layout, no difficulty filtering, and only keypoints visible in both
+images.
+
 Use `--root <dir>` on any script to keep the data elsewhere than `data/`.
 
 ## Running the experiments
@@ -93,7 +113,22 @@ python experiments/pascal_voc.py --backbone rational --rational_basis multivaria
 python experiments/faust.py --backbone spline --aggr mean                                  # best SplineCNN reproduction
 python experiments/faust.py --backbone rational --rational_basis multivariate \
        --degrees 8 6 --init pca --vp --num_bases 8                                         # mv, K=8
+
+# Experiment 3 — SPair-71k (same DGMC and backbone flags as PascalVOC)
+python experiments/spair71k.py --backbone spline                                           # SplineCNN k=5 (K=25)
+python experiments/spair71k.py --backbone rational --rational_basis multivariate \
+       --degrees 8 6 --init pca --vp --num_bases 4 --num_workers 6                         # mv, PCA+vp, K=4
 ```
+
+SPair-71k uses the PascalVOC defaults (not tuned for SPair) over all 53,340
+training pairs per epoch. The target keypoints are shuffled (randomly for
+training, with a fixed permutation per pair for evaluation) because the
+annotated order is the same in both images. After every epoch it reports
+per-category accuracy on val and all test pairs, both pair-averaged (the
+benchmark convention, used as the headline) and keypoint-weighted (the
+PascalVOC convention; 1,860 pairs have a single, trivially matched keypoint).
+The final line gives the last-epoch test accuracy, the best, and the test
+accuracy at the best validation epoch.
 
 Defaults are the exact paper settings: PascalVOC — DGMC with ψ₁: 1024→256,
 ψ₂: 128→128, 2 conv layers each, 10 consensus steps, Adam lr 1e-3, batch
@@ -111,6 +146,9 @@ slurm/submit.sh voc                                 # all paper configs × seeds
 slurm/submit.sh faust                               # all paper configs × seeds 0–2
 slurm/submit.sh voc mv_K4 mv_K6                     # a subset
 SEEDS="5 6" WANDB=1 slurm/submit.sh faust faust_mv_K8
+sbatch slurm/prep_spair71k.sbatch                  # once, SPair-71k graphs
+slurm/submit.sh spair                               # PascalVOC paper configs on SPair-71k × seeds 0–4
+DRY_RUN=1 slurm/submit.sh spair mv_K4               # print the jobs, submit nothing
 python results/analyze.py                           # tables + Welch t-tests from results/logs
 ```
 
@@ -182,6 +220,22 @@ unless noted.
 See `paper/rational_basis_draft.pdf` for the full description, the
 initialization analysis and the discussion of the SplineCNN reproduction gap
 on FAUST (`add` vs `mean` aggregation, gradient clipping).
+
+## HPC (PC2 Noctua 2)
+
+This clone is wired into PC2 Noctua 2: `hpc/env.sh` moves the dataset root,
+caches, wandb and the conda environment off the quota-limited `$HOME` onto
+project storage, and the `slurm/` jobs request the `gpu_h100` partition under
+account `hpc-prf-llmrout`. See `docs/hpc_runbook.md`.
+
+```bash
+source hpc/env.sh
+bash hpc/create_environment.sh     # conda env on group storage + pytest
+sbatch slurm/prep_pascal_voc.sbatch
+```
+
+The `--root` defaults fall back to `<repo>/data` when `$RBCNN_DATA_ROOT` is
+unset, so the repository behaves exactly as documented above elsewhere.
 
 ## License
 
