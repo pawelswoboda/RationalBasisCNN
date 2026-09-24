@@ -342,6 +342,23 @@ tests (seed fixes init and data order across configs).
 locality does nothing here. If instead `mv_K4_frozen` alone recovers most of
 the gap, the operative variable was fixedness, not support.
 
+### NMT (second keypoint-matching pipeline)
+
+NMT lives in `nmt/` with its own conda environment and storage roots
+(`/pc2/groups/hpc-prf-llmrout/hpcabpo/nmt`, `/scratch/hpc-prf-llmrout/hpcabpo/nmt`).
+It reads the SPair-71k and PascalVOC trees of this project directly. Setup,
+the sweeps and the analysis are in `nmt/README.md`:
+
+```bash
+cd nmt && source hpc/env.sh
+bash hpc/create_environment.sh           # login node, once
+slurm/submit.sh                          # SPair-71k, 13 configs x seeds 0-4
+slurm/submit.sh mv_K1 mv_K2              # SPair-71k, the other 2 paper configs
+DATASET=voc slurm/submit.sh              # PascalVOC, the same two lines
+DATASET=voc slurm/submit.sh mv_K1 mv_K2
+python results/analyze.py --dataset voc  # reads ../results/logs/nmt_voc
+```
+
 ### HPatches transfer (out-of-task)
 
 Does a keypoint refinement trained for sparse *semantic* matching help

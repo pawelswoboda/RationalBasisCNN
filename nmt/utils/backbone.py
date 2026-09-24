@@ -1,0 +1,185 @@
+import torch.nn as nn
+from torchvision import models
+from utils.vit import *
+from utils.gmt import *
+from utils.swinV2 import *
+from utils.config import cfg
+
+
+class VGG16_base(nn.Module):
+    def __init__(self, batch_norm=True):
+        super(VGG16_base, self).__init__()
+        self.node_layers, self.edge_layers, self.final_layers = self.get_backbone(batch_norm)
+        # train_eval.py trains these at 0.03x the base learning rate.
+        self.backbone_params = list(self.parameters())
+
+    def forward(self, *input):
+        raise NotImplementedError
+
+    @staticmethod
+    def get_backbone(batch_norm):
+        """
+        Get pretrained VGG16 models for feature extraction.
+        :return: feature sequence
+        """
+        if batch_norm:
+            model = models.vgg16_bn(pretrained=True)
+        else:
+            model = models.vgg16(pretrained=True)
+
+        conv_layers = nn.Sequential(*list(model.features.children()))
+
+        conv_list = node_list = edge_list = []
+
+        # get the output of relu4_2(node features) and relu5_1(edge features)
+        cnt_m, cnt_r = 1, 0
+        for layer, module in enumerate(conv_layers):
+            if isinstance(module, nn.Conv2d):
+                cnt_r += 1
+            if isinstance(module, nn.MaxPool2d):
+                cnt_r = 0
+                cnt_m += 1
+            conv_list += [module]
+
+            if cnt_m == 4 and cnt_r == 2 and isinstance(module, nn.ReLU):
+                node_list = conv_list
+                conv_list = []
+            elif cnt_m == 5 and cnt_r == 1 and isinstance(module, nn.ReLU):
+                edge_list = conv_list
+                conv_list = []
+
+        assert len(node_list) > 0 and len(edge_list) > 0
+
+        # Set the layers as a nn.Sequential module
+        node_layers = nn.Sequential(*node_list)
+        edge_layers = nn.Sequential(*edge_list)
+        final_layers = nn.Sequential(*conv_list, nn.AdaptiveMaxPool2d(1, 1))
+
+        return node_layers, edge_layers, final_layers
+
+
+class VGG16_bn(VGG16_base):
+    def __init__(self):
+        super(VGG16_bn, self).__init__(True)
+
+
+class VGG16(VGG16_base):
+    r"""Plain VGG16 without batch norm: the feature extractor of SplineCNN and
+    DGMC (PyG's PascalVOCKeypoints uses exactly `models.vgg16(pretrained=True)`
+    with relu4_2 and relu5_1)."""
+    def __init__(self):
+        super(VGG16, self).__init__(False)
+
+
+class Vit_base(nn.Module):
+    def __init__(self):
+        super(Vit_base, self).__init__()
+        self.vit = ViT(img_size=224,
+                              patch_size=16,
+                              embed_dim=768,
+                              depth=12,
+                              num_heads=12)
+        self.backbone_params = list(self.vit.parameters())
+
+        # --------------------------load parameters for base ViT-----------------------------------
+        weights_dict = torch.load(f'{cfg.BACKBONE_DIR}/vit_base.pth')
+        del weights_dict['model']['head.weight']
+        del weights_dict['model']['head.bias']
+        print(self.vit.load_state_dict(weights_dict['model'], strict=False))
+        # ------------------------------------------------------------------------------------------
+
+
+    @property
+    def device(self):
+        return next(self.parameters()).device
+    
+    
+class Gmt_base(nn.Module):
+    def __init__(self):
+        super(Gmt_base, self).__init__()
+        self.gmt= Gmt(img_size=224,
+                              patch_size=16,
+                              embed_dim=768,
+                              depth=12,
+                              num_heads=12)
+        self.backbone_params = list(self.gmt.parameters())
+
+        # --------------------------load parameters for base Gmt--------------------------
+        weights_dict = torch.load(f'{cfg.BACKBONE_DIR}/vit_base.pth')
+        del weights_dict['model']['head.weight']
+        del weights_dict['model']['head.bias']
+        print(self.gmt.load_state_dict(weights_dict['model'], strict=False))
+        # ------------------------------------------------------------------------------------------
+
+    @property
+    def device(self):
+        return next(self.parameters()).device
+    
+class SwinV2(nn.Module):
+    def __init__(self):
+        super(SwinV2, self).__init__()
+        self.swin = SwinTransformer()
+        self.backbone_params = list(self.swin.parameters())
+
+        # --------------------------load parameters for base SwinV2--------------------------
+        weights_dict = torch.load(f'{cfg.BACKBONE_DIR}/swinv2_base_patch4_window12to24_192to384_22kto1k_ft.pth')
+        del weights_dict['model']['head.weight']
+        del weights_dict['model']['head.bias']
+        print(self.swin.load_state_dict(weights_dict['model'], strict=False))
+        # ------------------------------------------------------------------------------------------
+
+    @property
+    def device(self):
+        return next(self.parameters()).device
+
+
+class VisualBackbone(nn.Module):
+    r"""Builds the backbone named by :obj:`cfg.BACKBONE` and exposes a single
+    interface for it, so that the matching model does not care which one runs.
+
+    :meth:`extract` returns ``(node_map, edge_map, global_vector)``:
+
+    * SwinV2 returns 1024 + 1024 channels and a 1024-d global token;
+    * VGG16 returns relu4_2 (512) + relu5_1 (512) and a 512-d global vector
+      from the remaining layers.
+
+    So ``cfg.SPLINE_CNN.input_features`` is 2048 for Swin and 1024 for VGG16,
+    and the global projection derived from it as ``input_features // 2`` stays
+    correct for both. The Swin branch keeps the submodule name ``swin`` so
+    existing NMT checkpoints still load.
+    """
+    def __init__(self):
+        super(VisualBackbone, self).__init__()
+        self.backbone_name = getattr(cfg, 'BACKBONE', 'swin')
+        if self.backbone_name == 'swin':
+            self.swin = SwinTransformer()
+            weights_dict = torch.load(
+                f'{cfg.BACKBONE_DIR}/swinv2_base_patch4_window12to24_192to384_22kto1k_ft.pth')
+            del weights_dict['model']['head.weight']
+            del weights_dict['model']['head.bias']
+            print(self.swin.load_state_dict(weights_dict['model'], strict=False))
+            self.backbone_params = list(self.swin.parameters())
+        elif self.backbone_name in ('vgg16', 'vgg16_bn'):
+            batch_norm = self.backbone_name == 'vgg16_bn'
+            (self.node_layers, self.edge_layers,
+             self.final_layers) = VGG16_base.get_backbone(batch_norm)
+            self.backbone_params = list(self.parameters())
+        else:
+            raise ValueError(f'unknown cfg.BACKBONE {self.backbone_name!r}; '
+                             f'expected swin, vgg16 or vgg16_bn')
+
+    def extract(self, image):
+        if self.backbone_name == 'swin':
+            return self.swin(image)
+        nodes = self.node_layers(image)
+        edges = self.edge_layers(nodes)
+        # AdaptiveMaxPool2d(1, 1) sets return_indices=True, so index the pooled
+        # tensor out of the (values, indices) tuple.
+        glob = self.final_layers(edges)
+        if isinstance(glob, tuple):
+            glob = glob[0]
+        return nodes, edges, glob.reshape(image.size(0), -1)
+
+    @property
+    def device(self):
+        return next(self.parameters()).device

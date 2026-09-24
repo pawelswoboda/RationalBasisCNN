@@ -1,0 +1,351 @@
+diff --git a/data/SPair71k.py b/data/SPair71k.py
+index 8354d34..3ddcf76 100644
+--- a/data/SPair71k.py
++++ b/data/SPair71k.py
+@@ -30,7 +30,13 @@ class SPair71k:
+         self.sets = sets_translation_dict[sets]
+         self.ann_files = open(os.path.join(cfg.SPair.ROOT_DIR + "/Layout", cfg.SPair.size, self.sets + ".txt"), "r").read().split("\n")
+         self.ann_files = self.ann_files[: len(self.ann_files) - 1]
+-        self.ann_files = [f.replace(":", "_") for f in self.ann_files] # Fix for SPair71k Layout format mismatching PairAnnotation format
++        # The official release names pair annotations with ":" exactly as the
++        # Layout files list them; some copies replace it with "_". Rewrite only
++        # if the annotation file of the first entry is not found as-is.
++        _pair_dir = os.path.join(cfg.SPair.ROOT_DIR, "PairAnnotation", self.sets)
++        if self.ann_files and not os.path.exists(
++                os.path.join(_pair_dir, self.ann_files[0] + ".json")):
++            self.ann_files = [f.replace(":", "_") for f in self.ann_files]
+         self.difficulty_params = difficulty_params_dict[self.sets]
+         self.pair_ann_path = cfg.SPair.ROOT_DIR + "/PairAnnotation"
+         self.image_path = cfg.SPair.ROOT_DIR + "/JPEGImages"
+diff --git a/model/nmt.py b/model/nmt.py
+index 85ff244..506501a 100644
+--- a/model/nmt.py
++++ b/model/nmt.py
+@@ -53,7 +53,7 @@ class ModelConfig:
+     mlp_hidden_mult: float = 4
+     layer_loss_param: float = 0.3
+ 
+-class NMT(utils.backbone.SwinV2): #Gmt_base #Vit_base
++class NMT(utils.backbone.VisualBackbone):
+     def __init__(self):
+         super(NMT, self).__init__()
+         self.model_name = 'Transformer'
+@@ -155,17 +155,18 @@ class NMT(utils.backbone.SwinV2): #Gmt_base #Vit_base
+         graph_list = []
+         global_feat = 0
+         for image, p, n_p, graph in zip(images, points, n_points, graphs):
+-            # extract feature
+-            #SwinV2
+-            swin_nodes, swin_edges, glob_token= self.swin(image)
+-            
+-            swin_nodes = normalize_over_channels(swin_nodes)
+-            swin_edges = normalize_over_channels(swin_edges)
+-            
+-            swin_U = concat_features(feature_align(swin_nodes, p, n_p, (384, 384)), n_p)
+-            swin_F = concat_features(feature_align(swin_edges, p, n_p, (384, 384)), n_p)
+-            
+-            node_features = torch.cat((swin_U, swin_F), dim=-1)
++            # extract feature with the backbone named by cfg.BACKBONE
++            # (SwinV2 as in the paper, or the much smaller VGG16 of DGMC)
++            bb_nodes, bb_edges, glob_token = self.extract(image)
++
++            bb_nodes = normalize_over_channels(bb_nodes)
++            bb_edges = normalize_over_channels(bb_edges)
++
++            img_size = (cfg.IMAGE_SIZE, cfg.IMAGE_SIZE)
++            bb_U = concat_features(feature_align(bb_nodes, p, n_p, img_size), n_p)
++            bb_F = concat_features(feature_align(bb_edges, p, n_p, img_size), n_p)
++
++            node_features = torch.cat((bb_U, bb_F), dim=-1)
+             
+             #VIT
+             #vit_nodes, vit_edges, glob_token = self.vit(image)
+diff --git a/model/sconv_archs.py b/model/sconv_archs.py
+index a325fb6..3a5ecf9 100644
+--- a/model/sconv_archs.py
++++ b/model/sconv_archs.py
+@@ -1,7 +1,43 @@
++r"""The geometry-aware keypoint refinement network of NMT.
++
++The continuous-kernel convolution is selected by ``cfg.SPLINE_CNN.conv``:
++
++* ``"spline"`` uses :class:`rational_cnn.BSplineConv`, a pure-PyTorch
++  re-implementation of the SplineConv operator of SplineCNN (Fey et al.,
++  CVPR 2018). It is the same operator ``torch_geometric.nn.SplineConv``
++  computes, but needs no ``torch_spline_conv`` C++ extension.
++* ``"rational"`` uses :class:`rational_cnn.RationalConv`, which replaces the
++  fixed B-spline hats of that operator by learnable rational (safe-Pade)
++  basis functions, keeping everything else identical.
++
++Both come from the RationalBasisCNN project, so the two settings differ only
++in the basis functions and nothing else.
++"""
+ import torch.nn
+ import torch
+ import torch.nn.functional as F
+-from torch_geometric.nn import SplineConv
++
++from rational_cnn import BSplineConv, RationalConv
++
++from utils.config import cfg
++
++
++def make_conv(input_features, output_features):
++    r"""One continuous-kernel convolution, configured by ``cfg.SPLINE_CNN``."""
++    c = cfg.SPLINE_CNN
++    if c.conv == "spline":
++        return BSplineConv(input_features, output_features, c.dim,
++                           c.kernel_size, aggr=c.aggr, pyg_init=c.pyg_init)
++    if c.conv == "rational":
++        return RationalConv(input_features, output_features, c.dim,
++                            c.kernel_size, aggr=c.aggr, pyg_init=c.pyg_init,
++                            basis=c.rational_basis, vp=c.vp,
++                            degrees=tuple(c.degrees), safe=c.safe,
++                            poly=c.poly, init=c.init,
++                            init_noise=c.init_noise,
++                            num_bases=c.num_bases or None)
++    raise ValueError(f"unknown cfg.SPLINE_CNN.conv {c.conv!r}; "
++                     f"expected 'spline' or 'rational'")
+ 
+ 
+ class SConv(torch.nn.Module):
+@@ -13,7 +49,7 @@ class SConv(torch.nn.Module):
+         self.convs = torch.nn.ModuleList()
+ 
+         for _ in range(self.num_layers):
+-            conv = SplineConv(input_features, output_features, dim=2, kernel_size=5, aggr="max")
++            conv = make_conv(input_features, output_features)
+             self.convs.append(conv)
+             input_features = output_features
+ 
+diff --git a/train_eval.py b/train_eval.py
+index 01d0f1a..31cb8cf 100644
+--- a/train_eval.py
++++ b/train_eval.py
+@@ -14,6 +14,7 @@ from torch.utils.data import DistributedSampler
+ import time
+ from pathlib import Path
+ import os
++import shutil
+ from datetime import timedelta
+ from tqdm import tqdm
+ 
+@@ -331,6 +332,12 @@ def train_eval_model(model, criterion, optimizer, dataloader, max_norm, num_epoc
+             path = str(base_path / "params.pt")
+             torch.save(model.state_dict(), path)
+             torch.save(optimizer.state_dict(), str(base_path / "optim.pt"))
++            if getattr(cfg, "keep_last_checkpoint_only", False):
++                # Model plus Adam state is ~1.3 GB per epoch; a sweep over
++                # configurations and seeds does not fit on scratch otherwise.
++                for old_ckpt in sorted(checkpoint_path.glob("[0-9][0-9][0-9][0-9]")):
++                    if old_ckpt != base_path:
++                        shutil.rmtree(old_ckpt, ignore_errors=True)
+         scheduler.step()
+         
+     
+@@ -412,7 +419,7 @@ if __name__ == "__main__":
+             )
+     else:
+         image_dataset = {
+-            x: GMDataset(x, cfg.DATASET_NAME, sets=x, length=dataset_len[x], obj_resize=(384, 384)) for x in ("train", "test")
++            x: GMDataset(x, cfg.DATASET_NAME, sets=x, length=dataset_len[x], obj_resize=(cfg.IMAGE_SIZE, cfg.IMAGE_SIZE)) for x in ("train", "test")
+         }
+         
+         sampler = {
+@@ -449,6 +456,12 @@ if __name__ == "__main__":
+         Path(cfg.model_dir).mkdir(parents=True)
+ 
+     num_epochs, _, __ = lr_schedules[cfg.TRAIN.lr_schedule]
++    max_epochs = getattr(cfg.TRAIN, "max_epochs", 0)
++    if max_epochs:
++        num_epochs = min(num_epochs, int(max_epochs))
++        print(f"stopping after {num_epochs} epochs "
++              f"(cfg.TRAIN.max_epochs; schedule '{cfg.TRAIN.lr_schedule}' "
++              f"defines {lr_schedules[cfg.TRAIN.lr_schedule][0]})")
+     model, all_error_dict = train_eval_model(model, 
+                                    criterion, 
+                                    optimizer,
+diff --git a/utils/backbone.py b/utils/backbone.py
+index 55bfa2a..46f62a3 100644
+--- a/utils/backbone.py
++++ b/utils/backbone.py
+@@ -10,6 +10,8 @@ class VGG16_base(nn.Module):
+     def __init__(self, batch_norm=True):
+         super(VGG16_base, self).__init__()
+         self.node_layers, self.edge_layers, self.final_layers = self.get_backbone(batch_norm)
++        # train_eval.py trains these at 0.03x the base learning rate.
++        self.backbone_params = list(self.parameters())
+ 
+     def forward(self, *input):
+         raise NotImplementedError
+@@ -61,6 +63,14 @@ class VGG16_bn(VGG16_base):
+         super(VGG16_bn, self).__init__(True)
+ 
+ 
++class VGG16(VGG16_base):
++    r"""Plain VGG16 without batch norm: the feature extractor of SplineCNN and
++    DGMC (PyG's PascalVOCKeypoints uses exactly `models.vgg16(pretrained=True)`
++    with relu4_2 and relu5_1)."""
++    def __init__(self):
++        super(VGG16, self).__init__(False)
++
++
+ class Vit_base(nn.Module):
+     def __init__(self):
+         super(Vit_base, self).__init__()
+@@ -120,4 +130,56 @@ class SwinV2(nn.Module):
+ 
+     @property
+     def device(self):
+-        return next(self.parameters()).device
+\ No newline at end of file
++        return next(self.parameters()).device
++
++
++class VisualBackbone(nn.Module):
++    r"""Builds the backbone named by :obj:`cfg.BACKBONE` and exposes a single
++    interface for it, so that the matching model does not care which one runs.
++
++    :meth:`extract` returns ``(node_map, edge_map, global_vector)``:
++
++    * SwinV2 returns 1024 + 1024 channels and a 1024-d global token;
++    * VGG16 returns relu4_2 (512) + relu5_1 (512) and a 512-d global vector
++      from the remaining layers.
++
++    So ``cfg.SPLINE_CNN.input_features`` is 2048 for Swin and 1024 for VGG16,
++    and the global projection derived from it as ``input_features // 2`` stays
++    correct for both. The Swin branch keeps the submodule name ``swin`` so
++    existing NMT checkpoints still load.
++    """
++    def __init__(self):
++        super(VisualBackbone, self).__init__()
++        self.backbone_name = getattr(cfg, 'BACKBONE', 'swin')
++        if self.backbone_name == 'swin':
++            self.swin = SwinTransformer()
++            weights_dict = torch.load(
++                f'{cfg.BACKBONE_DIR}/swinv2_base_patch4_window12to24_192to384_22kto1k_ft.pth')
++            del weights_dict['model']['head.weight']
++            del weights_dict['model']['head.bias']
++            print(self.swin.load_state_dict(weights_dict['model'], strict=False))
++            self.backbone_params = list(self.swin.parameters())
++        elif self.backbone_name in ('vgg16', 'vgg16_bn'):
++            batch_norm = self.backbone_name == 'vgg16_bn'
++            (self.node_layers, self.edge_layers,
++             self.final_layers) = VGG16_base.get_backbone(batch_norm)
++            self.backbone_params = list(self.parameters())
++        else:
++            raise ValueError(f'unknown cfg.BACKBONE {self.backbone_name!r}; '
++                             f'expected swin, vgg16 or vgg16_bn')
++
++    def extract(self, image):
++        if self.backbone_name == 'swin':
++            return self.swin(image)
++        nodes = self.node_layers(image)
++        edges = self.edge_layers(nodes)
++        # AdaptiveMaxPool2d(1, 1) sets return_indices=True, so index the pooled
++        # tensor out of the (values, indices) tuple.
++        glob = self.final_layers(edges)
++        if isinstance(glob, tuple):
++            glob = glob[0]
++        return nodes, edges, glob.reshape(image.size(0), -1)
++
++    @property
++    def device(self):
++        return next(self.parameters()).device
+diff --git a/utils/build_graphs.py b/utils/build_graphs.py
+index 36a1583..c701ef8 100644
+--- a/utils/build_graphs.py
++++ b/utils/build_graphs.py
+@@ -4,9 +4,16 @@ from scipy.spatial.qhull import QhullError
+ import itertools
+ import numpy as np
+ 
++from utils.config import cfg
+ 
++
++# The edge pseudo-coordinates the continuous-kernel convolution consumes must
++# lie in [0, 1], so keypoint offsets are divided by the image side length. That
++# is cfg.IMAGE_SIZE and not a constant: with the wrong value the offsets
++# silently stop covering the kernel domain.
+ def locations_to_features_diffs(x_1, y_1, x_2, y_2):
+-    res = np.array([0.5 + 0.5 * (x_1 - x_2) / 384.0, 0.5 + 0.5 * (y_1 - y_2) / 384.0]) #change the normalization value according to your image size value
++    size = float(cfg.IMAGE_SIZE)
++    res = np.array([0.5 + 0.5 * (x_1 - x_2) / size, 0.5 + 0.5 * (y_1 - y_2) / size])
+     return res
+ 
+ 
+@@ -31,9 +38,10 @@ def build_graphs(P_np: np.ndarray, n: int, n_pad: int = None, edge_pad: int = No
+         edge_list = [row.tolist(), col.tolist()]
+         x_1, y_1 = P_np[row, 0], P_np[row, 1]
+         x_2, y_2 = P_np[col, 0], P_np[col, 1]
++        size = float(cfg.IMAGE_SIZE)
+         features = np.stack([
+-            0.5 + 0.5 * (x_1 - x_2) / 384.0, 
+-            0.5 + 0.5 * (y_1 - y_2) / 384.0
++            0.5 + 0.5 * (x_1 - x_2) / size,
++            0.5 + 0.5 * (y_1 - y_2) / size
+         ], axis=1)
+     else:
+         features = np.zeros(shape=(0, 2))
+diff --git a/utils/config.py b/utils/config.py
+index 8753321..0f1df80 100644
+--- a/utils/config.py
++++ b/utils/config.py
+@@ -81,11 +81,57 @@ __C.SPair.CLASSES = [
+ 
+ __C.TRAIN = edict()
+ __C.TRAIN.difficulty_params = {}
++# Stop after this many epochs instead of the length of cfg.TRAIN.lr_schedule.
++# 0 uses the schedule's own length. The LR milestones are unchanged, so this
++# truncates the reported recipe rather than replacing it.
++__C.TRAIN.max_epochs = 0
+ # Iterations per epochs
+ 
+ __C.EVAL = edict()
+ __C.EVAL.difficulty_params = {}
+ 
++# The continuous-kernel convolution of model/sconv_archs.py. input_features /
++# output_features come from the experiment json; the rest selects the basis.
++#
++#   conv = "spline"    B-spline hats, i.e. the SplineConv of SplineCNN. Served
++#                      by rational_cnn's pure-PyTorch BSplineConv, so no PyG
++#                      C++ extension is needed.
++#   conv = "rational"  learnable rational (safe-Pade) basis functions in place
++#                      of the hats (RationalBasisCNN); the options below are
++#                      the flags of that project's experiments/backbones.py.
++__C.SPLINE_CNN = edict()
++__C.SPLINE_CNN.conv = "spline"
++__C.SPLINE_CNN.dim = 2                 # 2-D keypoint pseudo-coordinates
++__C.SPLINE_CNN.kernel_size = 5         # K = kernel_size ** dim = 25 hats
++__C.SPLINE_CNN.aggr = "max"            # NMT aggregates neighbours with max
++# PyG SplineConv's root/bias initialisation, so the spline baseline starts
++# exactly like the torch_geometric.nn.SplineConv that NMT originally used.
++__C.SPLINE_CNN.pyg_init = True
++# Rational basis options, ignored when conv == "spline".
++__C.SPLINE_CNN.rational_basis = "product"   # product | multivariate | mlp
++__C.SPLINE_CNN.degrees = [5, 4]             # numerator / denominator degree
++__C.SPLINE_CNN.safe = "B"
++__C.SPLINE_CNN.poly = "chebyshev"
++__C.SPLINE_CNN.init = "spline"              # spline | pca | random | ...
++__C.SPLINE_CNN.init_noise = 1e-3
++__C.SPLINE_CNN.vp = False                   # variance-preserving weight init
++__C.SPLINE_CNN.num_bases = 0                # K for multivariate/mlp; 0 = k**d
++
++# Keep only the newest epoch in <model_dir>/params instead of every epoch.
++# A full sweep otherwise writes ~1.3 GB per epoch per run (model + Adam state).
++__C.keep_last_checkpoint_only = False
++
++# Visual backbone: "swin" is the SwinV2-L of the paper, "vgg16" / "vgg16_bn"
++# are the much smaller VGG16 of SplineCNN/DGMC (relu4_2 + relu5_1), which makes
++# the results comparable to DGMC-scale graph matching models.
++__C.BACKBONE = "swin"
++
++# Side length images are resized to. Must match the backbone: 384 for SwinV2
++# (its pretrained window sizes), 256 for VGG16 (the DGMC/ThinkMatch setting).
++# It also sets the scale of the edge pseudo-coordinates in utils/build_graphs.py
++# and the coordinate frame of utils/feature_align.py, which all have to agree.
++__C.IMAGE_SIZE = 384
++
+ # Mean and std to normalize images
+ __C.NORM_MEANS = [0.485, 0.456, 0.406]
+ __C.NORM_STD = [0.229, 0.224, 0.225]

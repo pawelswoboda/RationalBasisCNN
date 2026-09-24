@@ -1,0 +1,47 @@
+{
+  "default_json": "experiments/voc_basic.json",
+  "DATASET_NAME": "PascalVOC",
+
+  "_comment_backbone": "Same substitution as experiments/spair_vgg16.json: SwinV2-L replaced by the plain VGG16 of SplineCNN/DGMC (relu4_2 + relu5_1 = 512 + 512 channels), so this run is comparable both to the NMT SPair-71k sweep and to the DGMC PascalVOC numbers. IMAGE_SIZE 256 is the DGMC/ThinkMatch setting and also rescales the edge pseudo-coordinates in utils/build_graphs.py.",
+  "BACKBONE": "vgg16",
+  "IMAGE_SIZE": 256,
+  "SPLINE_CNN": {
+    "input_features": 1024,
+    "output_features": 648,
+    "conv": "spline",
+    "kernel_size": 5,
+    "aggr": "max"
+  },
+
+  "_comment_batch_size": "BATCH_SIZE is deliberately NOT overridden here. voc_basic.json sets 8, which is NMT's own PascalVOC recipe; the claim being tested is that only the SplineConv layer changes, so the host recipe is left alone. spair_vgg16.json sets 5 because no author-provided SPair recipe existed.",
+
+  "_comment_paths": "ROOT_DIR must end in a slash: data/pascal_voc.py builds the image and annotation directories by string concatenation (cfg.VOC2011.ROOT_DIR + 'JPEGImages'). SET_SPLIT points at the split shipped with the shared PascalVOC tree; see NMT_VOC_ROOT in hpc/env.sh for why voc2011_pairs.npz is not required.",
+  "VOC2011": {
+    "ROOT_DIR": "/pc2/groups/hpc-prf-llmrout/hpcabpo/rational-basis-cnn/data/PascalVOC/raw/images/",
+    "SET_SPLIT": "/pc2/groups/hpc-prf-llmrout/hpcabpo/rational-basis-cnn/data/PascalVOC/raw/splits.npz",
+    "KPT_ANNO_DIR": "/pc2/groups/hpc-prf-llmrout/hpcabpo/rational-basis-cnn/data/PascalVOC/raw/annotations/"
+  },
+
+  "_comment_cache": "data/pascal_voc.py writes a filtered-xml pickle to cfg.CACHE_PATH. The default 'data/cache' is repo-relative, i.e. inside the 50 GB HOME quota, and group storage is read-only inside jobs, so it is redirected to scratch.",
+  "CACHE_PATH": "/scratch/hpc-prf-llmrout/hpcabpo/nmt/cache/voc_db",
+
+  "BACKBONE_DIR": "/scratch/hpc-prf-llmrout/hpcabpo/nmt/checkpoints",
+  "model_dir": "/scratch/hpc-prf-llmrout/hpcabpo/nmt/runs/voc_vgg16_spline",
+
+  "TRAIN": {
+    "_comment_epochs": "Identical budget to the SPair-71k sweep so the two NMT columns are comparable: lr_schedule long_halving5 defines 12 epochs, max_epochs stops after 7, and both LR drops (epochs 2 and 5) still happen.",
+    "max_epochs": 7,
+    "EPOCH_ITERS": 2000,
+    "lr_schedule": "long_halving5",
+    "LR": 0.0005
+  },
+  "EVAL": {
+    "SAMPLES": 1000
+  },
+  "visualize": false,
+  "visualization_params": {
+    "reduced_vis": true,
+    "produce_pdf": false
+  },
+  "combine_classes": false
+}

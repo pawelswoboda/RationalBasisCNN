@@ -7,23 +7,29 @@
 \usepackage{graphicx}
 \usepackage{multirow}
 \usepackage{placeins}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usetikzlibrary{arrows.meta,calc}
+\pgfplotsset{compat=1.18}
 \usepackage{microtype}
 \usepackage{hyperref}
 \usepackage{url}
 
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta,calc,positioning}
-\usepackage{pgfplots}
-\pgfplotsset{compat=1.18}
+\AddToHook{env/table/begin}{%
+  \setlength{\abovecaptionskip}{0pt}\setlength{\belowcaptionskip}{10pt}%
+  \exhyphenpenalty=10000}
 
 \newcommand{\bx}{\mathbf{x}}
 \newcommand{\bu}{\mathbf{u}}
+\newcommand{\bz}{\mathbf{z}}
 \newcommand{\bt}{\mathbf{t}}
 \newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\Cin}{C_{\mathrm{in}}}
 \newcommand{\Cout}{C_{\mathrm{out}}}
 \newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\ours}{RBF-GNN}
 
 % Per-column ranking shades: best / second / third.
 \def\redc{\cellcolor[HTML]{FF999A}}
@@ -51,46 +57,91 @@ Paper under double-blind review}
 \maketitle
 
 \begin{abstract}
-We propose \ours{}, a new pseudo-coordinate based graph neural network architecture that takes into account euclidean, spherical or angular coordinates and uses them to induce a powerful spatial inductive bias.
-Similar in architecture to SplineCNN, we improve upon the latter by replacing the less efficient sparse-activation based B-splines whose number grows exponentially with dimension by rational Pad\'e basis functions.
-For effective training we propose a spline-subspace initialization and a variance-preserving weight rescaling. 
-Experimentally, we evaluate on a number of popular neural network architectures that use SplineCNNs. We replace only the SplineCNNs with \ours{}.
-We achieve improved results, including on semantic keypoint matching, shape matching, event based camera computer vision tasks.
-We will make our implementation publicly available upon acceptance of the paper.
+We propose RBF-GNN, a new pseudo-coordinate based graph neural network
+architecture that takes into account euclidean, spherical or angular
+coordinates and uses them to induce a powerful spatial inductive bias.
+Similar in architecture to SplineCNN, we improve upon the latter by replacing
+the less efficient sparse-activation based B-splines whose number grows
+exponentially with dimension by rational Pad\'e basis functions. For effective
+training we propose a spline-subspace initialization and a variance-preserving
+weight rescaling. Experimentally, we evaluate on a number of popular neural
+network architectures that use SplineCNNs. We replace only the SplineCNNs with
+RBF-GNN. We achieve improved results, including on semantic keypoint matching,
+shape matching, event based camera computer vision tasks. We will make our
+implementation publicly available upon acceptance of the paper.
 \end{abstract}
-
 
 \section{Introduction}
 \label{sec:intro}
 
-Graph neural networks (GNN) encode geometric relationships between points. 
-For graphs embedded in some coordinate space, for example Euclidean or spherical ones, SplineCNNs~\cite{fey2018splinecnn} are one of the best-performing methods that make explicit use of coordinates and enable higher performance than coordinate-free GNNs.
-In particular, SplineCNN's coordinate-based convolution allows for efficient spatial localization and encodes a powerful inductive spatial bias.
-Since many geometric tasks have relatively little data, this inductive bias is especially helpful.
-This has resulted in SplineCNN being used, to our knowledge, in all state of the art semantic keypoint matching methods~\cite{...} for geometry based feature refinement.
+Many graph convolutions for geometric data define their kernel as a continuous
+function of pseudo-coordinates attached to the edges, and they differ mainly in
+how this function is represented. SplineCNN~\citep{fey2018splinecnn} expands it
+in a fixed tensor-product basis of B-splines, MoNet~\citep{monti2017monet} in a
+mixture of learnable Gaussians, and more recent continuous-kernel
+operators~\citep{ma2024ckgconv} in a small multilayer perceptron of the
+pseudo-coordinates. This choice determines which kernels a layer can represent
+and how many parameters it requires.
 
-SplineCNN works by modulating convolutions based on the activations of spatially localized B-splines.
-However, SplineCNN has a few drawbacks:
-\begin{description}
-    \item[Sparsity:] B-splines form a partition of unity and for every coordinate only a few of them become non-zero. Hence, most of the convolutions are not active. This in turn makes it difficult to become computationally efficient on GPUs and means that convolutions receive relatively sparse updates during backpropagation.
-    \item[Efficiency:] In order to localize activations spatially with enough precision in high dimensions, a fine enough partition of unity must be employed, necessitating a large enough B-spline bases. The size of this B-splines basis grows exponentially with the dimension of the coordinate space.
-\end{description}
+SplineCNN has been adopted in a range of later architectures. Its basis
+functions are compactly supported B-splines on a regular grid over the unit
+cube. This gives the kernel an explicit spatial locality and makes the
+evaluation time independent of the kernel size, because only the few basis
+functions whose support contains the pseudo-coordinate of an edge have to be
+evaluated.
 
-We propose to improve SplineCNN's architecture by replacing splines by rational safe Pad\'e basis functions.
-Their advantages are:
+The same grid, however, also determines the number of parameters. With $k$
+basis functions per axis in $D$ pseudo-coordinate dimensions, the grid contains
+$K = k^D$ basis functions, and the layer has one weight matrix for each of
+them. For a fixed resolution per axis, the number of weight matrices therefore
+grows exponentially with $D$, independently of the complexity of the kernel
+that has to be learned. Because of the compact support, each edge moreover
+involves only a small subset of these weight matrices, so that each weight
+matrix is updated by only a fraction of the edges.
+
+In this work, we replace the B-spline basis by $K$ learnable rational
+functions, so that $K$ becomes a hyperparameter that is independent of $D$.
+Each basis function is a ratio of two polynomials in the safe Pad\'e form
+$B = P(t)/(1 + |Q(t)|)$~\citep{molina2020pade}, whose denominator is at least
+one and therefore never vanishes, and both polynomials are expressed in the
+Chebyshev basis for better numerical conditioning. Unlike the B-splines, these
+functions are not compactly supported, so every edge involves all $K$ weight
+matrices. Since rational functions with small random coefficients are nearly
+flat, we initialize the basis from the B-splines it replaces. When $K = k^D$,
+we fit the B-splines directly. Otherwise, we fit their leading principal
+components and rescale the kernel weights so that the initial message variance
+matches that of the B-spline layer.
+
+In our experiments, the main benefit of the rational basis is parameter
+efficiency, and its extent depends on the size of the B-spline grid that is
+replaced rather than on the pseudo-coordinate dimension alone. For large grids,
+a rational basis with few functions matches the accuracy of
+the full grid with substantially fewer parameters. For small grids, it does not
+reduce the number of parameters consistently but improves accuracy. The
+accuracy gains are moderate and vary across benchmarks. They are smaller in the
+stronger of the two keypoint matching pipelines, and on the six-dimensional
+part segmentation benchmark the B-spline grid remains slightly more accurate. A
+learned basis of the same size produced by a multilayer perceptron is less
+accurate than the rational basis in most comparisons, which indicates that the
+improvements are not due to learning the basis alone.
+
+Our contributions are as follows:
+
 \begin{itemize}
-    \item more flexible, learnable localization
-    \item increase computational efficiency and decrease required parameter count since fewer activation functions are needed due to them not being zero at most places and
-    \item better scaling to higher dimensions, since the size of a B-spline basis grows exponentially with the number of coordinate dimensions.
-\end{itemize}
-
-We also show empirically the advantages of \ours{}.
-We outperform SplineCNN based architectures by swapping SplineCNN for \ours{} and leaving everything else the same on the following benchmarks:
-\begin{itemize}
-    \item Sparse keypoint matching on PascalVOC~\cite{} and SPair-71K~\cite{} with the Deep Graph Matching Consensus~\cite{} architecture as well as the more recent ...~\cite{}.
-    \item Shape matching on FAUST~\cite{}.
-    \item Event-based camera computer vision~\cite{}.
-\end{itemize}
+    \item We remove the coupling between the size of a
+layer's weights and the dimension of its coordinate space, and we
+establish what a learnable basis needs in order to take a fixed one's place
+without loss
+\item  We evaluate the substitution across eight benchmarks whose
+pseudo-coordinate dimension ranges from two to six, spanning keypoint matching
+on PascalVOC~\citep{everingham2010pascal} and SPair-71k~\citep{min2019spair}
+in two published matching architectures~\citep{fey2020dgmc,normmatchtrans},
+shape correspondence on FAUST~\citep{bogo2014faust}, event-camera recognition
+on N-Caltech101~\citep{orchard2015converting} and N-Cars~\citep{sironi2018hats},
+superpixel classification~\citep{dwivedi2023benchmarking} and point-cloud part
+segmentation~\citep{yi2016scalable}. On that evidence we recommend a rational
+basis wherever a parameter budget binds and the spline grid would be wide.
+\end{itemize}.
 
 \section{Related work}
 \label{sec:related}
@@ -133,24 +184,6 @@ functions are multivariate mixing coefficients of a matrix-valued graph kernel
 and are initialised to preserve both the SplineCNN kernel subspace and its
 output variance.
 
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\textwidth]{figures/method}
-\caption{\textbf{RBF-GNN in one picture.} Every edge of the input graph
-carries a pseudo-coordinate $\mathbf u_{ij}\in[0,1]^D$, the normalised offset
-of $j$ from $i$. A continuous-kernel layer turns it into kernel weights
-through a basis $B$, and this basis is the only thing we change: SplineCNN
-uses $k^D$ fixed B-spline hats, RBF-GNN uses a small, freely chosen number of
-learnable rational functions, initialised in the spline subspace and
-reshaped by training (shown: the functions of one layer before and after
-training on MNIST superpixels).}
-\label{fig:method}
-\end{figure}
-
-
-
-
 \section{Method}
 \label{sec:operator}
 
@@ -177,7 +210,7 @@ The zero offset lands at the centre $\tfrac12\mathbf 1$, a neighbour to the left
 $u_d<\tfrac12$ in that dimension, and the largest offset touches the
 boundary.
 See Figure~\ref{fig:coords} for an illustration of the pseudo-coordinate construction.
-These pseudo-coordinates are the only way geometry enters the model. 
+These pseudo-coordinates are the only way geometry enters the model.
 Polar or spherical encodings can be handled analoguously.
 
 \paragraph{Continuous convolution kernels.}
@@ -494,7 +527,7 @@ The original SplineCNN~\cite{fey2018splinecnn} uses the operator~\eqref{eq:splin
 This construction yields spatial localisation and a strong geometric inductive bias.
 However, in every coordinate at most 2 B-splines are active, which means in larger dimensions that all but $2^D$ of the $\Theta_{\mathbf p}$ receive zero gradient.
 This results in sparse, uneven updates and dense evaluation wasted on zeros.
-The basis size $K=k^D$ grows exponentially with the coordinate dimension $D$ 
+The basis size $K=k^D$ grows exponentially with the coordinate dimension $D$
 
 
 \paragraph{Initialization.}
@@ -516,9 +549,9 @@ We perform a stage-wise optimization to fit our learnable basis functions as fol
 We evaluate squared loss on a fixed grid of points, using 256 for 1D, $32^2$ for 2D and $16^2$ on 3D.
 We use a small values for the denominator $Q$ since the gradient of a constant zero $Q$ would vanish.
 The fit is cached, so stacked layers share the same fit.
-The spline fit can be performed whenever the number of basis functions $K = k^d$ for some $k \in \N$. 
+The spline fit can be performed whenever the number of basis functions $K = k^d$ for some $k \in \N$.
 
-\emph{PCA of splines.} 
+\emph{PCA of splines.}
 When $K \ne k^D$, we cannot fit to the splines.
 Instead, we fit the $K$ functions to the $K$ leading principal components of the $k^D$ spline basis.
 In detail, this is done as follows:
@@ -529,10 +562,10 @@ Last, we fit each $u_i$ with the same procedure as above for the spline fit.
 
 \emph{Variance-preserving gain.}
 The initialization of the kernel weights is calibrated for the spline basis.
-The entries of $\Theta_p$ are drawn i.i.d.\ zero-mean with variance proportional to $1/(K\Cin)$ (\S\ref{sec:training}).
+The entries of $\Theta_p$ are drawn i.i.d.\ zero-mean with variance proportional to $1/(K\Cin)$.
 Thus, the message $\sum_p B_p(\bu)\,\Theta_p\,\bx_j$ along an edge has variance proportional to the basis energy $\sum_p B_p(\bu)^2$.
 For partition-of-unity basis like the spline the variance remains.
-However, the PCA-based initialization can result in larger activations and, without correction, to inflated output scale. 
+However, the PCA-based initialization can result in larger activations and, without correction, to inflated output scale.
 
 Adapting a technique from KAT~\citep{yang2025kat}, we therefore rescale the
 kernel weights by $\sqrt{\alpha}$ after basis initialization.
@@ -558,436 +591,397 @@ The polynomial sums are efficiently computed by a Horner-like scheme.
 The resulting kernel runs about $15x$ times faster than the naive  PyTorch implementation and $3x$ faster than a compiled variant and consumes less memory.
 Training and inference with the Triton kernel for \ours{} is slightly faster overall than the PyG-implementation of SplineCNN.
 
-\section{Experiments}
-\label{sec:experiments}
-
-
-\paragraph{Methods}
-\begin{description}
-    \item[\texttt{SplineCNN}:]
-    \item[\texttt{MLP}:]
-    \item[\texttt{\ours{}-uv}:]
-    \item[\texttt{\ours{}-mv}:]
-\end{description}
-
-\paragraph{Keypoint matching on PascalVOC and SPair-71k.}
-\label{sec:pascalvoc}
-We evaluate semantic keypoint matching in two host pipelines that both use a
-continuous-kernel graph convolution for geometric feature refinement: DGMC
-\citep{fey2020dgmc} and NMT. In each pipeline we replace only the SplineConv
-layers and leave the rest of the architecture, the backbone and the training
-recipe untouched. Table~\ref{tab:keypoint} reports every configuration in both
-pipelines on PascalVOC-Keypoints and SPair-71k.
-
-\begin{table}[ht]
+% Layout note. Table 1 is declared before the section heading with [!b], so it
+% sits at the bottom of the page on which the Method ends. Tables 2 to 7 are
+% three float pairs of two half-width tables, each scaled to fill its half.
+% The caption row comes first, so both tables of a pair start at the same height.
+\begin{table}[!b]
 \centering\footnotesize
+\caption{Semantic keypoint matching on PascalVOC and SPair-71k. Accuracy (\%) follows
+the protocol of each pipeline and is the mean $\pm$ std over 5 seeds, and
+\ranklegend{} mark the three highest means per column. Parameter counts cover
+the whole model for DGMC and only the graph-convolution layers for NMT. DGMC on
+SPair-71k reports the validation-selected checkpoint, and the other columns
+report the best test epoch.}
+\label{tab:keypoint}
 \setlength{\tabcolsep}{4pt}
 \renewcommand{\arraystretch}{1.08}
 \resizebox{\ifdim\width>\textwidth\textwidth\else\width\fi}{!}{%
-\begin{tabular}{@{}lrrccrcc@{}}
+\begin{tabular}{@{}lrccrcc@{}}
 \toprule
- & & \multicolumn{3}{c}{DGMC~\citep{fey2020dgmc}} & \multicolumn{3}{c}{NMT} \\
-\cmidrule(lr){3-5}\cmidrule(lr){6-8}
-Method & $K$ & Params $\downarrow$ & PascalVOC $\uparrow$ & SPair-71k $\uparrow$
+ & \multicolumn{3}{c}{DGMC~\citep{fey2020dgmc}} & \multicolumn{3}{c}{NMT~\citep{normmatchtrans}} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Method & Params $\downarrow$ & PascalVOC $\uparrow$ & SPair-71k $\uparrow$
        & Params $\downarrow$ & PascalVOC $\uparrow$ & SPair-71k $\uparrow$ \\
 \midrule
 \rowcolor[HTML]{EDEDED}
-\multicolumn{8}{@{}l}{\textit{Spline baselines}} \\
-SplineCNN & 25 & 9.50M & $73.00 \pm 0.40$ & $76.18 \pm 0.64$ & 28.17M & -- & \orangec $82.10 \pm 0.11$ \\
-SplineCNN &  9 & 3.74M & $72.78 \pm 0.40$ & $76.04 \pm 0.43$ & 10.84M & -- & $81.54 \pm 0.31$ \\
-SplineCNN &  4 & 1.93M & $71.48 \pm 0.40$ & $71.92 \pm 0.38$ &  5.42M & -- & $77.79 \pm 0.40$ \\
+\multicolumn{7}{@{}l}{\textit{Spline baselines}} \\
+SplineCNN ($K{=}25$) & 9.50M & $73.00 \pm 0.40$ & $76.18 \pm 0.64$ & 28.17M & \yellowc $83.10 \pm 0.36$ & \orangec $82.10 \pm 0.11$ \\
+SplineCNN ($K{=}9$) & 3.74M & $72.78 \pm 0.40$ & $76.04 \pm 0.43$ & 10.84M & $82.66 \pm 0.30$ & $81.54 \pm 0.31$ \\
+SplineCNN ($K{=}4$) & 1.93M & $71.48 \pm 0.40$ & $71.92 \pm 0.38$ &  5.42M & $80.10 \pm 0.46$ & $77.79 \pm 0.40$ \\
 \rowcolor[HTML]{EDEDED}
-\multicolumn{8}{@{}l}{\textit{MLP learned-basis control}} \\
-MLP basis &  4 & 1.94M & $72.76 \pm 0.27$ & $73.74 \pm 0.71$ &  5.42M & -- & $80.40 \pm 0.57$ \\
-MLP basis &  9 & 3.74M & $72.04 \pm 0.73$ & $74.34 \pm 0.62$ & 10.84M & -- & $81.05 \pm 0.32$ \\
+\multicolumn{7}{@{}l}{\textit{MLP learned-basis control}} \\
+MLP basis ($K{=}4$) & 1.94M & $72.76 \pm 0.27$ & $73.74 \pm 0.71$ &  5.42M & $81.90 \pm 0.27$ & $80.40 \pm 0.57$ \\
+MLP basis ($K{=}9$) & 3.74M & $72.04 \pm 0.73$ & $74.34 \pm 0.62$ & 10.84M & $82.12 \pm 0.51$ & $81.05 \pm 0.32$ \\
 \rowcolor[HTML]{EDEDED}
-\multicolumn{8}{@{}l}{\textit{RBF-GNN with a product basis}} \\
-\textbf{RBF-GNN} (product) & 25 & 9.50M & $72.88 \pm 0.48$ & $76.34 \pm 0.42$ & 28.17M & -- & \yellowc $82.08 \pm 0.21$ \\
-\textbf{RBF-GNN} (product) &  9 & 3.74M & $73.26 \pm 0.18$ & $76.24 \pm 0.73$ & 10.84M & -- & $81.64 \pm 0.35$ \\
+\multicolumn{7}{@{}l}{\textit{RBF-GNN with a product basis}} \\
+\textbf{RBF-GNN} ($K{=}25$) & 9.50M & $72.88 \pm 0.48$ & $76.34 \pm 0.42$ & 28.17M & \redc $83.78 \pm 0.35$ & \yellowc $82.08 \pm 0.21$ \\
+\textbf{RBF-GNN} ($K{=}9$) & 3.74M & $73.26 \pm 0.18$ & $76.24 \pm 0.73$ & 10.84M & $82.85 \pm 0.42$ & $81.64 \pm 0.35$ \\
 \rowcolor[HTML]{EDEDED}
-\multicolumn{8}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
-\textbf{RBF-GNN} (mv), hat init &  9 & 3.74M & \redc $74.12 \pm 0.48$ & \orangec $77.68 \pm 0.35$ & 10.84M & -- & \redc $82.11 \pm 0.35$ \\
-\textbf{RBF-GNN} (mv), PCA$+$vp &  4 & 1.94M & \yellowc $73.78 \pm 0.41$ & $77.44 \pm 0.36$ &  5.42M & -- & $81.52 \pm 0.22$ \\
-\textbf{RBF-GNN} (mv), PCA$+$vp &  6 & 2.66M & \orangec $74.06 \pm 0.37$ & \redc $77.80 \pm 0.66$ &  7.59M & -- & $81.71 \pm 0.18$ \\
-\textbf{RBF-GNN} (mv), PCA$+$vp &  9 & 3.74M & $73.72 \pm 0.19$ & \yellowc $77.50 \pm 0.27$ & 10.84M & -- & $81.59 \pm 0.14$ \\
-\textbf{RBF-GNN} (mv), PCA$+$vp & 16 & 6.26M & $73.26 \pm 0.42$ & $77.14 \pm 0.40$ & 18.42M & -- & $81.69 \pm 0.27$ \\
-\textbf{RBF-GNN} (mv), PCA$+$vp &  2 & 1.21M & $71.76 \pm 0.45$ & -- & -- & -- & -- \\
-\textbf{RBF-GNN} (mv), PCA$+$vp &  1 & 0.85M & $68.26 \pm 0.36$ & -- & -- & -- & -- \\
+\multicolumn{7}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
+\textbf{RBF-GNN} ($K{=}9$), hat init & 3.74M & \redc $74.12 \pm 0.48$ & \orangec $77.68 \pm 0.35$ & 10.84M & $83.08 \pm 0.26$ & \redc $82.11 \pm 0.35$ \\
+\textbf{RBF-GNN} ($K{=}4$), PCA$+$vp & 1.94M & \yellowc $73.78 \pm 0.41$ & $77.44 \pm 0.36$ &  5.42M & $82.42 \pm 0.43$ & $81.52 \pm 0.22$ \\
+\textbf{RBF-GNN} ($K{=}6$), PCA$+$vp & 2.66M & \orangec $74.06 \pm 0.37$ & \redc $77.80 \pm 0.66$ &  7.59M & $82.95 \pm 0.42$ & $81.71 \pm 0.18$ \\
+\textbf{RBF-GNN} ($K{=}9$), PCA$+$vp & 3.74M & $73.72 \pm 0.19$ & \yellowc $77.50 \pm 0.27$ & 10.84M & $82.88 \pm 0.38$ & $81.59 \pm 0.14$ \\
+% \textbf{RBF-GNN} ($K{=}16$), PCA$+$vp & 6.26M & $73.26 \pm 0.42$ & $77.14 \pm 0.40$ & 18.42M & $83.01 \pm 0.33$ & $81.69 \pm 0.27$ \\
+% \textbf{RBF-GNN} ($K{=}2$), PCA$+$vp & 1.21M & $71.76 \pm 0.45$ & $74.32 \pm 0.71$ &  3.25M & $81.11 \pm 0.78$ & $80.20 \pm 0.48$ \\
+% \textbf{RBF-GNN} ($K{=}1$), PCA$+$vp & 0.85M & $68.26 \pm 0.36$ & $68.74 \pm 1.41$ &  2.17M & $79.27 \pm 0.69$ & $77.61 \pm 0.19$ \\
 \rowcolor[HTML]{EDEDED}
-\multicolumn{8}{@{}l}{\textit{RBF-GNN degree control}} \\
-\textbf{RBF-GNN} (mv $(5,4)$) & 25 & 9.51M & $73.08 \pm 0.25$ & $76.26 \pm 0.23$ & 28.17M & -- & $82.01 \pm 0.21$ \\
+\multicolumn{7}{@{}l}{\textit{RBF-GNN with a multivariate basis, degree control}} \\
+\textbf{RBF-GNN} ($K{=}25$), degrees $(5,4)$ & 9.51M & $73.08 \pm 0.25$ & $76.26 \pm 0.23$ & 28.17M & \orangec $83.35 \pm 0.38$ & $82.01 \pm 0.21$ \\
 \bottomrule
 \end{tabular}}
-\caption{Semantic keypoint matching in two host pipelines. Accuracy (\%) is
-mean $\pm$ std over 5 seeds; \ranklegend{} mark the three highest means
-\emph{within each benchmark column}. $K$ is the number of basis functions and
-is shared by both pipelines; the DGMC parameter counts are whole-model totals,
-whereas the NMT counts cover the graph-convolution stack only and exclude the
-frozen VGG16 backbone, so the two parameter columns are not comparable to each
-other. Metrics follow each pipeline's own protocol and are likewise not
-comparable across columns: DGMC/PascalVOC is averaged over the 20 object
-categories, DGMC/SPair-71k is pair-averaged over 18 categories, and
-NMT/SPair-71k is keypoint accuracy over 18 classes. Only SPair-71k under DGMC
-has a validation split, so its column reports the validation-selected
-checkpoint; the remaining columns report the best test epoch. Entries marked
-``--'' were not run: NMT has no PascalVOC runs, and $K \in \{1,2\}$ was swept
-on DGMC/PascalVOC only.}
-\label{tab:keypoint}
 \end{table}
-\FloatBarrier
 
-The multivariate rational basis is the strongest configuration in all three
-populated columns. Its margin over the best spline baseline shrinks as the
-host pipeline strengthens --- $+1.12$ on DGMC/PascalVOC, $+1.62$ on
-DGMC/SPair-71k and $+0.01$ on NMT/SPair-71k --- so the accuracy gain is
-pipeline-dependent. The margin over the MLP learned-basis control does not
-follow that pattern ($+1.36$, $+3.46$ and $+1.06$), which indicates that the
-structured rational form matters beyond merely learning the basis. The
-parameter-efficiency result is the more robust one: a multivariate basis
-matches or exceeds the widest spline grid in every column while using
-$2.6$--$4.9\times$ fewer parameters. At matched $K$ the advantage is
-concentrated at small bases ($+0.6$ to $+5.5$ for $K \in \{4,9\}$) and
-vanishes at $K{=}25$.
+\section{Experiments}
+\label{sec:experiments}
+\setcounter{topnumber}{1}
+We evaluate RBF-GNN on eight benchmarks from five tasks, with
+pseudo-coordinates of two to six dimensions. In each experiment, RBF-GNN
+replaces the SplineConv layers of the host network. SplineCNN is the original
+B-spline operator with $K = k^D$ basis functions. Hat init and PCA$+$vp denote
+the spline fit and the variance-preserving PCA initialization of
+Section~\ref{sec:operator}. The MLP basis control produces the $K$ basis
+functions with a two-layer MLP of the
+pseudo-coordinates~\citep{schutt2017schnet,wu2019pointconv}, and the PointNet
+control replaces the basis by a PointNet-style layer on the neighbor features
+and pseudo-coordinates. Results are means and standard deviations over three
+seeds unless stated otherwise. 
 
-\paragraph{Shape correspondence on FAUST.}
+\subsection{Semantic keypoint matching}
+\label{sec:pascalvoc}
+We evaluate semantic keypoint matching in two host pipelines,
+DGMC~\citep{fey2020dgmc} and the Normalized Matching Transformer
+(NMT)~\citep{normmatchtrans}, which both use a continuous-kernel graph
+convolution for geometric feature refinement. In each pipeline we replace only
+the SplineConv layers and keep the rest of the architecture, the backbone and
+the training procedure unchanged. Table~\ref{tab:keypoint} reports all
+configurations for both pipelines on
+PascalVOC-Keypoints~\citep{everingham2010pascal,bourdev2009poselets} and
+SPair-71k~\citep{min2019spair}.
+
+In every column of Table~\ref{tab:keypoint}, the most accurate configuration
+uses a rational basis, though not always the same variant. The multivariate
+basis is best under DGMC on both datasets and, by $0.01$, under NMT on
+SPair-71k, and the product basis is best under NMT on PascalVOC with $83.78$. The margin over the best spline baseline decreases
+from $+1.12$ and $+1.62$ under DGMC to $+0.68$ and $+0.01$ under the stronger
+NMT pipeline, so the accuracy gain depends on the host pipeline. The parameter
+savings are more consistent. In three of the four columns, a rational basis
+matches or exceeds the widest spline grid with $2.6$ to $4.9\times$ fewer
+parameters, and under NMT on PascalVOC it is within $0.02$ points of that grid
+with $2.6\times$ fewer.
+
+\subsection{Shape correspondence}
 \label{sec:faust}
-We evaluate dense shape correspondence on FAUST following the SplineCNN
-protocol~\citep{fey2018splinecnn}. The task assigns every vertex of a held-out
-human mesh to a template vertex, and we report exact-match accuracy over three
-random seeds.
-
-\begin{table}[ht]
+\begin{table}[t]
+\centering
+\begin{minipage}[b]{0.49\textwidth}
+\caption{Accuracy (\%) for shape correspondence on FAUST.}
+\label{tab:faust}
+\end{minipage}\hfill
+\begin{minipage}[b]{0.49\textwidth}
+\caption{Instance-average mIoU (\%) for part segmentation on ShapeNet-Part with 6-D
+position and normal pseudo-coordinates.}
+\label{tab:shapenet-part}
+\end{minipage}\par\nointerlineskip
+\begin{minipage}[t]{0.49\textwidth}
+\vspace{0pt}
 \centering\footnotesize
 \setlength{\tabcolsep}{4pt}
 \renewcommand{\arraystretch}{1.08}
-\resizebox{\ifdim\width>\textwidth\textwidth\else\width\fi}{!}{%
-\begin{tabular}{@{}lrrc@{}}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lrc@{}}
 \toprule
-Method & $K$ & Params $\downarrow$ & Final $\uparrow$ \\
+Method & Params $\downarrow$ & Final $\uparrow$ \\
 \midrule
 \rowcolor[HTML]{EDEDED}
-\multicolumn{4}{@{}l}{\textit{Spline baselines}} \\
-\emph{SplineCNN $k{=}5$ (published)} & 125 & 4.10M & \emph{99.20} \\
-SplineCNN $k{=}5$, mean $+$ clip & 125 & 4.11M & $98.71 \pm 0.08$ \\
-SplineCNN $k{=}5$, add $+$ clip & 125 & 4.11M & $97.23 \pm 0.51$ \\
-SplineCNN $k{=}5$, add, no clip & 125 & 4.11M & $29.1 \pm 50.3$ \\
-SplineCNN $k{=}3$ & 27 & 2.30M & $83.6 \pm 15.6$ \\
-SplineCNN $k{=}2$ & 8 & \orangec 1.95M & $3.4 \pm 3.3$ \\
+\multicolumn{3}{@{}l}{\textit{Spline baselines}} \\
+\emph{SplineCNN ($K{=}125$), published} & 4.10M & \emph{99.20} \\
+SplineCNN ($K{=}125$), mean $+$ clip & 4.11M & $98.71 \pm 0.08$ \\
+SplineCNN ($K{=}125$), add $+$ clip & 4.11M & $97.23 \pm 0.51$ \\
+SplineCNN ($K{=}125$), add, no clip & 4.11M & $29.1 \pm 50.3$ \\
+SplineCNN ($K{=}27$) & 2.30M & $83.6 \pm 15.6$ \\
+SplineCNN ($K{=}8$) & \orangec 1.95M & $3.4 \pm 3.3$ \\
 \rowcolor[HTML]{EDEDED}
-\multicolumn{4}{@{}l}{\textit{MLP learned-basis control}} \\
-MLP basis, $K{=}8$ & 8 & \yellowc 1.96M & $98.21 \pm 1.11$ \\
+\multicolumn{3}{@{}l}{\textit{MLP learned-basis control}} \\
+MLP basis ($K{=}8$) & \yellowc 1.96M & $98.21 \pm 1.11$ \\
 \rowcolor[HTML]{EDEDED}
-\multicolumn{4}{@{}l}{\textit{RBF-GNN with a product basis}} \\
-\textbf{RBF-GNN} (product), $k{=}3$ & 27 & 2.30M & \yellowc $99.24 \pm 0.08$ \\
+\multicolumn{3}{@{}l}{\textit{RBF-GNN with a product basis}} \\
+\textbf{RBF-GNN} ($K{=}27$) & 2.30M & \yellowc $99.24 \pm 0.08$ \\
 \rowcolor[HTML]{EDEDED}
-\multicolumn{4}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
-\textbf{RBF-GNN} (multivariate), $K{=}4$ & 4 & \redc 1.89M & \orangec $99.38 \pm 0.09$ \\
-\textbf{RBF-GNN} (multivariate), $K{=}4$, mean aggr. & 4 & \redc 1.89M & $98.93 \pm 0.10$ \\
-\textbf{RBF-GNN} (multivariate), $K{=}8$ & 8 & 1.97M & \redc $99.41 \pm 0.04$ \\
-\textbf{RBF-GNN} (multivariate), $K{=}16$ & 16 & 2.13M & $70.4 \pm 25.2$ \\
-\textbf{RBF-GNN} (multivariate), $K{=}27$ & 27 & 2.34M & $19.0 \pm 32.8$ \\
+\multicolumn{3}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
+\textbf{RBF-GNN} ($K{=}4$) & \redc 1.89M & \orangec $99.38 \pm 0.09$ \\
+\textbf{RBF-GNN} ($K{=}4$), mean aggr. & \redc 1.89M & $98.93 \pm 0.10$ \\
+\textbf{RBF-GNN} ($K{=}8$) & 1.97M & \redc $99.41 \pm 0.04$ \\
+\textbf{RBF-GNN} ($K{=}16$) & 2.13M & $70.4 \pm 25.2$ \\
 \bottomrule
 \end{tabular}}
-\caption{FAUST shape correspondence. Accuracy (\%) is reported as mean
-$\pm$ std over 3 seeds; the published SplineCNN result is from
-\citet{fey2018splinecnn}. \ranklegend{} mark the three highest accuracy means
-and the three smallest parameter counts.}
-\label{tab:faust}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\textwidth}
+\vspace{0pt}
+\centering\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.08}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lrc@{}}
+\toprule
+Method & Params $\downarrow$ & Final mIoU $\uparrow$ \\
+\midrule
+\rowcolor[HTML]{EDEDED}
+\multicolumn{3}{@{}l}{\textit{Spline baselines}} \\
+SplineCNN ($K{=}729$) & 1.60M & \redc $65.12 \pm 0.41$ \\
+SplineCNN ($K{=}64$) & 177.91k & $60.02 \pm 0.23$ \\
+\rowcolor[HTML]{EDEDED}
+\multicolumn{3}{@{}l}{\textit{MLP learned-basis control}} \\
+MLP basis ($K{=}8$) & \redc 60.75k & $62.80 \pm 0.45$ \\
+MLP basis ($K{=}32$) & \yellowc 116.88k & \yellowc $63.81 \pm 0.46$ \\
+\rowcolor[HTML]{EDEDED}
+\multicolumn{3}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
+\textbf{RBF-GNN} ($K{=}8$) & \orangec 64.87k & $61.88 \pm 0.38$ \\
+\textbf{RBF-GNN} ($K{=}32$) & 137.43k & \orangec $64.86 \pm 0.18$ \\
+\bottomrule
+\end{tabular}}
+\end{minipage}
 \end{table}
-\FloatBarrier
+Dense shape correspondence on FAUST~\citep{bogo2014faust} assigns every vertex
+of a held-out human mesh to a template vertex. We follow the SplineCNN
+protocol~\citep{fey2018splinecnn}, report exact-match accuracy and compare with
+the published SplineCNN result (Table~\ref{tab:faust}). Small multivariate
+rational bases achieve the best and most stable results with substantially
+fewer parameters than SplineCNN.
 
-Small multivariate rational bases give the best and most stable results with
-substantially fewer parameters than SplineCNN. Their degradation at larger
-basis sizes points to fragile PCA initialization rather than insufficient
-capacity.
-
-\paragraph{Event-based object recognition on N-Caltech101.}
+\subsection{Event-based recognition}
 \label{sec:ncaltech101}
-We evaluate multiclass object recognition on N-Caltech101
-\citep{orchard2015converting} with the seven-layer AEGNN recognition network
-\citep{schaefer2022aegnn}. Each event is a graph node with space-time
-pseudo-coordinates; we replace only the SplineConv layers and report test
-accuracy over three random seeds.
-
-\begin{table}[ht]
-\centering\footnotesize
-\setlength{\tabcolsep}{5pt}
-\renewcommand{\arraystretch}{1.08}
-\begin{tabular}{@{}lccrc@{}}
-\toprule
-Method & $K$ & Aggr. & Params $\downarrow$ & Final $\uparrow$ \\
-\midrule
-\rowcolor[HTML]{EDEDED}
-\multicolumn{5}{@{}l}{\textit{Spline baselines}} \\
-SplineCNN $k{=}2$ & 8 & mean & \orangec 77.68k & $47.35 \pm 0.15$ \\
-SplineCNN $k{=}2$ & 8 & max & \orangec 77.68k & \orangec $56.00 \pm 0.92$ \\
-\rowcolor[HTML]{EDEDED}
-\multicolumn{5}{@{}l}{\textit{PointNet learned-kernel control}} \\
-PointNet & -- & max & \redc 55.68k & $54.99 \pm 0.84$ \\
-\rowcolor[HTML]{EDEDED}
-\multicolumn{5}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
-\textbf{RBF-GNN} (multivariate) & 8 & mean & \yellowc 91.57k & \yellowc $55.05 \pm 0.58$ \\
-\textbf{RBF-GNN} (multivariate) & 8 & max & \yellowc 91.57k & \redc $57.55 \pm 0.42$ \\
-\bottomrule
-\end{tabular}
-\caption{N-Caltech101 event-based object recognition with AEGNN. Models use
-training augmentation and validation-based convergence; test accuracy (\%) is
-mean $\pm$ std over 3 seeds. \ranklegend{} mark the three highest means and
-the three smallest parameter counts.}
-\label{tab:ncaltech101}
-\end{table}
-\FloatBarrier
-
-RBF-GNN performs best with max aggregation and also improves substantially
-over SplineCNN under matched mean aggregation. Its advantage under both
-aggregation rules shows that the gain is not explained only by the
-neighborhood reducer.
-
-\paragraph{Event-based car recognition on N-Cars.}
 \label{sec:ncars}
-We evaluate binary car-versus-background recognition on the real-world N-Cars
-dataset~\citep{sironi2018hats} with the same AEGNN architecture and replacement
-protocol~\citep{schaefer2022aegnn}. We report test accuracy after training for
-30 epochs, averaged over three random seeds.
-
-\begin{table}[ht]
-\centering\footnotesize
-\setlength{\tabcolsep}{5pt}
-\renewcommand{\arraystretch}{1.08}
-\begin{tabular}{@{}lccrc@{}}
-\toprule
-Method & $K$ & Aggr. & Params $\downarrow$ & Final $\uparrow$ \\
-\midrule
-\rowcolor[HTML]{EDEDED}
-\multicolumn{5}{@{}l}{\textit{Spline baselines}} \\
-SplineCNN $k{=}2$ & 8 & mean & \yellowc 26.99k & $87.83 \pm 0.25$ \\
-SplineCNN $k{=}2$ & 8 & max & \yellowc 26.99k & $89.81 \pm 0.27$ \\
-\rowcolor[HTML]{EDEDED}
-\multicolumn{5}{@{}l}{\textit{PointNet learned-kernel control}} \\
-PointNet & -- & max & \redc 4.99k & $87.17 \pm 0.24$ \\
-\rowcolor[HTML]{EDEDED}
-\multicolumn{5}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
-\textbf{RBF-GNN} (multivariate) & 4 & mean & \orangec 21.10k & \yellowc $90.24 \pm 0.39$ \\
-\textbf{RBF-GNN} (multivariate) & 8 & mean & 40.88k & \orangec $90.49 \pm 0.05$ \\
-\textbf{RBF-GNN} (multivariate) & 8 & max & 40.88k & \redc $91.00 \pm 0.43$ \\
-\bottomrule
-\end{tabular}
-\caption{N-Cars event-based car recognition with AEGNN. Test accuracy (\%) is
-mean $\pm$ std over 3 seeds; \ranklegend{} mark the three highest means and
-the three smallest parameter counts.}
+\begin{table}[t]
+\centering
+\begin{minipage}[b]{0.49\textwidth}
+\caption{Test accuracy (\%) for object recognition on N-Caltech101 with AEGNN.}
+\label{tab:ncaltech101}
+\end{minipage}\hfill
+\begin{minipage}[b]{0.49\textwidth}
+\caption{Test accuracy (\%) for car recognition on N-Cars with AEGNN.}
 \label{tab:ncars}
+\end{minipage}\par\nointerlineskip
+\begin{minipage}[t]{0.49\textwidth}
+\vspace{0pt}
+\centering\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.08}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcrc@{}}
+\toprule
+Method & Aggr. & Params $\downarrow$ & Final $\uparrow$ \\
+\midrule
+\rowcolor[HTML]{EDEDED}
+\multicolumn{4}{@{}l}{\textit{Spline baselines}} \\
+SplineCNN ($K{=}8$) & mean & \orangec 77.68k & $47.35 \pm 0.15$ \\
+SplineCNN ($K{=}8$) & max & \orangec 77.68k & \orangec $56.00 \pm 0.92$ \\
+\rowcolor[HTML]{EDEDED}
+\multicolumn{4}{@{}l}{\textit{PointNet learned-kernel control}} \\
+PointNet & max & \redc 55.68k & $54.99 \pm 0.84$ \\
+\rowcolor[HTML]{EDEDED}
+\multicolumn{4}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
+\textbf{RBF-GNN} ($K{=}8$) & mean & \yellowc 91.57k & \yellowc $55.05 \pm 0.58$ \\
+\textbf{RBF-GNN} ($K{=}8$) & max & \yellowc 91.57k & \redc $57.55 \pm 0.42$ \\
+\bottomrule
+\end{tabular}}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\textwidth}
+\vspace{0pt}
+\centering\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.08}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcrc@{}}
+\toprule
+Method & Aggr. & Params $\downarrow$ & Final $\uparrow$ \\
+\midrule
+\rowcolor[HTML]{EDEDED}
+\multicolumn{4}{@{}l}{\textit{Spline baselines}} \\
+SplineCNN ($K{=}8$) & mean & \yellowc 26.99k & $87.83 \pm 0.25$ \\
+SplineCNN ($K{=}8$) & max & \yellowc 26.99k & $89.81 \pm 0.27$ \\
+\rowcolor[HTML]{EDEDED}
+\multicolumn{4}{@{}l}{\textit{PointNet learned-kernel control}} \\
+PointNet & max & \redc 4.99k & $87.17 \pm 0.24$ \\
+\rowcolor[HTML]{EDEDED}
+\multicolumn{4}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
+\textbf{RBF-GNN} ($K{=}4$) & mean & \orangec 21.10k & \yellowc $90.24 \pm 0.39$ \\
+\textbf{RBF-GNN} ($K{=}8$) & mean & 40.88k & \orangec $90.49 \pm 0.05$ \\
+\textbf{RBF-GNN} ($K{=}8$) & max & 40.88k & \redc $91.00 \pm 0.43$ \\
+\bottomrule
+\end{tabular}}
+\end{minipage}
 \end{table}
-\FloatBarrier
+Both event-camera benchmarks use the seven-layer AEGNN recognition
+network~\citep{schaefer2022aegnn}, with one graph node per event and
+space-time pseudo-coordinates, and we replace only its SplineConv layers. We
+report test accuracy for multiclass object recognition on
+N-Caltech101~\citep{orchard2015converting}, where we train with augmentation
+and a validation-based stopping criterion, and for real-world binary
+car-versus-background recognition on N-Cars~\citep{sironi2018hats}, where we
+train for 30 epochs.
+On N-Caltech101, RBF-GNN performs best with
+max aggregation and also improves substantially over SplineCNN under matched
+mean aggregation (Table~\ref{tab:ncaltech101}). On N-Cars, RBF-GNN is the most
+accurate model under both aggregation rules, its mean-aggregation variant
+outperforms the max-aggregation SplineCNN, and its smaller configuration is
+more accurate than SplineCNN with fewer parameters (Table~\ref{tab:ncars}).
 
-RBF-GNN is strongest under both aggregation rules, and its mean-aggregation
-variant outperforms the max-aggregation SplineCNN. The smaller RBF-GNN
-configuration also improves accuracy while using fewer parameters than
-SplineCNN.
-
-\paragraph{Superpixel graph classification on MNIST.}
+\subsection{Superpixel graph classification}
 \label{sec:mnist-superpixels}
-We evaluate graph classification on MNIST superpixels following the SplineCNN
-protocol~\citep{fey2018splinecnn}. The network uses two continuous-kernel
-convolution layers with 2-D Cartesian pseudo-coordinates, and we report test
-accuracy over three random seeds.
-
-\begin{table}[ht]
-\centering\footnotesize
-\setlength{\tabcolsep}{5pt}
-\renewcommand{\arraystretch}{1.08}
-\begin{tabular}{@{}lrrc@{}}
-\toprule
-Method & $K$ & Params $\downarrow$ & Final $\uparrow$ \\
-\midrule
-\rowcolor[HTML]{EDEDED}
-\multicolumn{4}{@{}l}{\textit{Spline baselines}} \\
-SplineCNN $k{=}5$ & 25 & 88.36k & $97.41 \pm 0.13$ \\
-SplineCNN $k{=}3$ & 9 & 55.08k & $96.49 \pm 0.12$ \\
-SplineCNN $k{=}2$ & 4 & \redc 44.68k & $94.83 \pm 0.11$ \\
-\rowcolor[HTML]{EDEDED}
-\multicolumn{4}{@{}l}{\textit{MLP learned-basis control}} \\
-MLP basis, $K{=}4$ & 4 & \yellowc 45.59k & $97.23 \pm 0.11$ \\
-\rowcolor[HTML]{EDEDED}
-\multicolumn{4}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
-\textbf{RBF-GNN} (multivariate), PCA$+$vp, $K{=}4$ & 4 & \orangec 45.26k & \yellowc $97.79 \pm 0.08$ \\
-\textbf{RBF-GNN} (multivariate), PCA$+$vp, $K{=}9$ & 9 & 56.38k & \redc $98.00 \pm 0.16$ \\
-\textbf{RBF-GNN} (multivariate), hat init, $k{=}3$ & 9 & 56.38k & \orangec $97.87 \pm 0.06$ \\
-\bottomrule
-\end{tabular}
-\caption{MNIST superpixel graph classification. Test accuracy (\%) is mean
-$\pm$ std over 3 seeds; \ranklegend{} mark the three highest means and the
-three smallest parameter counts.}
-\label{tab:mnist-superpixels}
-\end{table}
-\FloatBarrier
-
-RBF-GNN gives the three strongest results and improves over SplineCNN at both
-matched and reduced basis sizes. Its advantage over the equal-width MLP
-control supports the rational parameterization itself.
-
-\paragraph{Superpixel graph classification on CIFAR-10 with 5-D bilateral
-coordinates.}
 \label{sec:cifar10-superpixels}
-We evaluate CIFAR-10 superpixel graph classification from
-GNNBenchmarkDataset~\citep{dwivedi2023benchmarking}. The bilateral
-pseudo-coordinate concatenates relative 2-D centroid position and RGB
-features into a 5-D kernel, and we report test accuracy over three random
-seeds.
-
-\begin{table}[ht]
-\centering\footnotesize
-\setlength{\tabcolsep}{5pt}
-\renewcommand{\arraystretch}{1.08}
-\begin{tabular}{@{}lrrc@{}}
-\toprule
-Method & $K$ & Params $\downarrow$ & Final $\uparrow$ \\
-\midrule
-\rowcolor[HTML]{EDEDED}
-\multicolumn{4}{@{}l}{\textit{Spline baselines}} \\
-SplineCNN $k{=}3$ & 243 & 557.42k & $58.73 \pm 0.26$ \\
-SplineCNN $k{=}2$ & 32 & 105.03k & $57.55 \pm 0.34$ \\
-\rowcolor[HTML]{EDEDED}
-\multicolumn{4}{@{}l}{\textit{MLP learned-basis control}} \\
-MLP basis, $K{=}8$ & 8 & \orangec 55.39k & \orangec $59.67 \pm 0.32$ \\
-MLP basis, $K{=}32$ & 32 & \yellowc 109.96k & \yellowc $59.02 \pm 0.10$ \\
-\rowcolor[HTML]{EDEDED}
-\multicolumn{4}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
-\textbf{RBF-GNN} (multivariate), $K{=}4$ & 4 & \redc 46.45k & $57.58 \pm 0.23$ \\
-\textbf{RBF-GNN} (multivariate), $K{=}8$ & 8 & \yellowc 56.47k & $58.97 \pm 0.16$ \\
-\textbf{RBF-GNN} (multivariate), $K{=}32$ & 32 & 116.62k & \redc $59.87 \pm 0.40$ \\
-\bottomrule
-\end{tabular}
-\caption{CIFAR-10 superpixel graph classification with 5-D bilateral
-pseudo-coordinates. Test accuracy (\%) is mean $\pm$ std over 3 seeds;
-\ranklegend{} mark the three highest means and the three smallest parameter
-counts.}
+\begin{table}[t]
+\centering
+\begin{minipage}[b]{0.49\textwidth}
+\caption{Test accuracy (\%) for MNIST superpixel classification.}
+\label{tab:mnist-superpixels}
+\end{minipage}\hfill
+\begin{minipage}[b]{0.49\textwidth}
+\caption{Test accuracy (\%) with 5-D bilateral pseudo-coordinates on CIFAR-10
+superpixels.}
 \label{tab:cifar10-bilateral}
-\end{table}
-\FloatBarrier
-
-RBF-GNN attains the best accuracy while using far fewer parameters than the
-wider spline grid. The lower-width sweep remains competitive, although the
-MLP control is strongest at the smallest shared width.
-
-\paragraph{Part segmentation on ShapeNet-Part with 6-D coordinates.}
-\label{sec:shapenet-part}
-We evaluate point-cloud part segmentation on ShapeNet-Part~\citep{yi2016scalable}
-using a fixed subset of 4,000 training and 1,333 test shapes. Relative
-positions and surface normals define 6-D pseudo-coordinates on a
-16-nearest-neighbor graph, and we report instance-average mIoU over three
-random seeds.
-
-\begin{table}[ht]
+\end{minipage}\par\nointerlineskip
+\begin{minipage}[t]{0.49\textwidth}
+\vspace{0pt}
 \centering\footnotesize
 \setlength{\tabcolsep}{5pt}
 \renewcommand{\arraystretch}{1.08}
-\begin{tabular}{@{}lrrc@{}}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lrc@{}}
 \toprule
-Method & $K$ & Params $\downarrow$ & Final mIoU $\uparrow$ \\
+Method & Params $\downarrow$ & Final $\uparrow$ \\
 \midrule
 \rowcolor[HTML]{EDEDED}
-\multicolumn{4}{@{}l}{\textit{Spline baselines}} \\
-SplineCNN $k{=}3$ & 729 & 1.60M & \redc $65.12 \pm 0.41$ \\
-SplineCNN $k{=}2$ & 64 & 177.91k & $60.02 \pm 0.23$ \\
+\multicolumn{3}{@{}l}{\textit{Spline baselines}} \\
+SplineCNN ($K{=}25$) & 88.36k & $97.41 \pm 0.13$ \\
+SplineCNN ($K{=}9$) & 55.08k & $96.49 \pm 0.12$ \\
+SplineCNN ($K{=}4$) & \redc 44.68k & $94.83 \pm 0.11$ \\
 \rowcolor[HTML]{EDEDED}
-\multicolumn{4}{@{}l}{\textit{MLP learned-basis control}} \\
-MLP basis, $K{=}8$ & 8 & \redc 60.75k & $62.80 \pm 0.45$ \\
-MLP basis, $K{=}32$ & 32 & \yellowc 116.88k & \yellowc $63.81 \pm 0.46$ \\
+\multicolumn{3}{@{}l}{\textit{MLP learned-basis control}} \\
+MLP basis ($K{=}4$) & \yellowc 45.59k & $97.23 \pm 0.11$ \\
 \rowcolor[HTML]{EDEDED}
-\multicolumn{4}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
-\textbf{RBF-GNN} (multivariate), $K{=}8$ & 8 & \orangec 64.87k & $61.88 \pm 0.38$ \\
-\textbf{RBF-GNN} (multivariate), $K{=}32$ & 32 & 137.43k & \orangec $64.86 \pm 0.18$ \\
+\multicolumn{3}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
+\textbf{RBF-GNN} ($K{=}4$), PCA$+$vp & \orangec 45.26k & \yellowc $97.79 \pm 0.08$ \\
+\textbf{RBF-GNN} ($K{=}9$), PCA$+$vp & 56.38k & \redc $98.00 \pm 0.16$ \\
+\textbf{RBF-GNN} ($K{=}9$), hat init & 56.38k & \orangec $97.87 \pm 0.06$ \\
 \bottomrule
-\end{tabular}
-\caption{ShapeNet-Part segmentation with 6-D position--normal
-pseudo-coordinates. Instance-average mIoU (\%) is mean $\pm$ std over 3 seeds;
-\ranklegend{} mark the three highest means and the three smallest parameter
-counts.}
-\label{tab:shapenet-part}
-\end{table}
-\FloatBarrier
-
-RBF-GNN nearly matches the large spline grid with an order-of-magnitude
-smaller model and outperforms the equal-width MLP control. At the narrowest
-width the MLP is stronger, so this benchmark supports efficient scaling
-rather than universal gains at every capacity.
-
-\paragraph{Keypoint matching on WILLOW-ObjectClass.}
-We evaluate semantic keypoint matching on WILLOW-ObjectClass with the DGMC
-pipeline~\citep{fey2020dgmc}, without PascalVOC pretraining. We report final
-matching accuracy over ten runs and include an initialization ablation for
-the product rational basis.
-
-\begin{table}[ht]
+\end{tabular}}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\textwidth}
+\vspace{0pt}
 \centering\footnotesize
-\setlength{\tabcolsep}{6pt}
+\setlength{\tabcolsep}{5pt}
 \renewcommand{\arraystretch}{1.08}
-\begin{tabular}{@{}lc@{}}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lrc@{}}
 \toprule
-Method & Final $\uparrow$ \\
+Method & Params $\downarrow$ & Final $\uparrow$ \\
 \midrule
 \rowcolor[HTML]{EDEDED}
-\multicolumn{2}{@{}l}{\textit{Spline baselines}} \\
-SplineCNN & $96.80 \pm 1.20$ \\
+\multicolumn{3}{@{}l}{\textit{Spline baselines}} \\
+SplineCNN ($K{=}243$) & 557.42k & $58.73 \pm 0.26$ \\
+SplineCNN ($K{=}32$) & 105.03k & $57.55 \pm 0.34$ \\
 \rowcolor[HTML]{EDEDED}
-\multicolumn{2}{@{}l}{\textit{RBF-GNN with a product basis}} \\
-\textbf{RBF-GNN} (product), hat init & \yellowc $97.28 \pm 1.01$ \\
-\textbf{RBF-GNN}, Gaussian init & \redc $97.72$ \\
-\textbf{RBF-GNN}, Chebyshev$+$vp init & $97.07$ \\
-\textbf{RBF-GNN}, random$+$vp init & $92.13$ \\
-\textbf{RBF-GNN}, constant init & $10.00$ \\
+\multicolumn{3}{@{}l}{\textit{MLP learned-basis control}} \\
+MLP basis ($K{=}8$) & \orangec 55.39k & \orangec $59.67 \pm 0.32$ \\
+MLP basis ($K{=}32$) & \yellowc 109.96k & \yellowc $59.02 \pm 0.10$ \\
 \rowcolor[HTML]{EDEDED}
-\multicolumn{2}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
-\textbf{RBF-GNN} (multivariate), $k{=}5$ & \orangec $97.55 \pm 0.63$ \\
+\multicolumn{3}{@{}l}{\textit{RBF-GNN with a multivariate basis}} \\
+\textbf{RBF-GNN} ($K{=}4$) & \redc 46.45k & $57.58 \pm 0.23$ \\
+\textbf{RBF-GNN} ($K{=}8$) & \yellowc 56.47k & $58.97 \pm 0.16$ \\
+\textbf{RBF-GNN} ($K{=}32$) & 116.62k & \redc $59.87 \pm 0.40$ \\
 \bottomrule
-\end{tabular}
-\caption{WILLOW-ObjectClass keypoint matching. Final accuracy (\%) is shown;
-the backbone comparison reports mean $\pm$ std over 10 runs. \ranklegend{}
-mark the three highest means.}
-\label{tab:willow}
+\end{tabular}}
+\end{minipage}
 \end{table}
+On MNIST~\citep{lecun1998mnist} superpixels, we follow the SplineCNN
+protocol~\citep{fey2018splinecnn} and use two continuous-kernel convolution
+layers on 2-D Cartesian pseudo-coordinates. On
+CIFAR-10~\citep{krizhevsky2009cifar} superpixels from
+GNNBenchmarkDataset~\citep{dwivedi2023benchmarking}, we use a 5-D bilateral
+pseudo-coordinate that concatenates the relative 2-D centroid position with the
+RGB features. We report test
+accuracy on both datasets.
+On MNIST, RBF-GNN achieves the three highest
+accuracies and improves over SplineCNN at both matched and reduced basis sizes
+(Table~\ref{tab:mnist-superpixels}). On CIFAR-10, RBF-GNN attains the best
+accuracy while using far fewer parameters than the wider spline grid, and its
+smaller configurations remain competitive (Table~\ref{tab:cifar10-bilateral}).
+
+\subsection{Part segmentation}
+\label{sec:shapenet-part}
+For point-cloud part segmentation on ShapeNet-Part~\citep{yi2016scalable}, we
+use a fixed subset of 4,000 training and 1,333 test shapes. Relative positions
+and surface normals define 6-D pseudo-coordinates on a 16-nearest-neighbor
+graph, and we report instance-average mIoU.
+RBF-GNN nearly matches the large
+spline grid with an order-of-magnitude smaller model and outperforms the
+equal-width MLP control (Table~\ref{tab:shapenet-part}). At the smallest width
+the MLP control is more accurate, so the advantage of RBF-GNN on this benchmark
+is parameter efficiency at larger widths, not a gain at every width.
+
+\subsection{Ablation study}
+\label{sec:ablation}
+
+\paragraph{Basis size.} For the PCA$+$vp rows of Table~\ref{tab:keypoint},
+accuracy rises sharply from $K{=}1$ to $K{=}4$ in all four columns, peaks at
+$K{=}6$ under DGMC and changes little beyond it under NMT. At matched $K$,
+the advantage over SplineCNN is concentrated at small bases. It ranges from
+$+0.42$ to $+5.52$ for $K \in \{4,9\}$, and at $K{=}25$ it is negligible,
+between $-0.02$ and $+0.16$, except under NMT on PascalVOC with $+0.68$.
+On
+FAUST, the multivariate basis degrades sharply, with high variance across
+seeds, at $K{=}16$ and $K{=}27$ (Table~\ref{tab:faust}), which points to a
+fragile PCA initialization rather than insufficient capacity. At 5-D and 6-D,
+in contrast, RBF-GNN improves up to $K{=}32$ (Tables~\ref{tab:cifar10-bilateral} and~\ref{tab:shapenet-part}).
+
+\paragraph{Basis form and polynomial degree.} At $K{=}9$, the multivariate basis
+with hat init outperforms the product basis in all four columns of
+Table~\ref{tab:keypoint}, but with higher polynomial degrees, $(8,6)$ instead
+of $(5,4)$. In the degree control, where both forms use $(5,4)$ at $K{=}25$,
+they differ by at most $0.43$ points. On FAUST, the product basis remains
+stable at $K{=}27$, whereas the multivariate basis degrades sharply
+(Table~\ref{tab:faust}).
+
+\paragraph{Initialization.} The tables compare the two initializations only at
+$K{=}9$, where hat init outperforms PCA$+$vp by $0.18$ to $0.52$ points in all
+four columns of Table~\ref{tab:keypoint} and is $0.13$ points worse on
+MNIST (Table~\ref{tab:mnist-superpixels}). The two therefore perform similarly,
+and PCA$+$vp is required whenever $K \neq k^D$.
+
+\paragraph{Aggregation.} On FAUST, SplineCNN is most accurate with mean
+aggregation and unstable with add aggregation unless gradients are
+clipped, whereas RBF-GNN at $K{=}4$ is more accurate with add than
+with mean (Table~\ref{tab:faust}). On both event-camera benchmarks, max aggregation
+outperforms mean aggregation for SplineCNN and RBF-GNN alike, and since RBF-GNN
+is more accurate under both rules, its gain is not explained by the choice of
+aggregation alone (Tables~\ref{tab:ncaltech101}
+and~\ref{tab:ncars}).
+
+\paragraph{Structured and learned bases.} In Table~\ref{tab:keypoint}, the best
+rational basis in each column exceeds the best MLP control by $+1.36$,
+$+3.46$, $+1.66$ and $+1.06$ points. Unlike the margin over SplineCNN, this
+margin does not decrease systematically from DGMC to NMT, which indicates that
+the rational form itself matters and not only the fact that the basis is
+learned. On MNIST, the advantage over the equal-width MLP control likewise
+supports the rational parameterization, whereas on CIFAR-10 and ShapeNet-Part
+the MLP control is more accurate at the smallest shared width. On both
+event-camera benchmarks, the PointNet control uses fewer parameters than
+RBF-GNN but is less accurate than its best configuration.
+
 \FloatBarrier
-
-The multivariate model gives the best mean accuracy, although the backbone
-differences are not statistically significant. Initialization strongly
-affects optimization, and a constant basis collapses to chance performance.
-
-\paragraph{Keypoint matching on PascalPF.}
-We evaluate semantic keypoint matching on synthetic and PascalPF image pairs
-following DGMC~\citep{fey2020dgmc}. We report final matching accuracy over
-three random seeds and compare the initialization strategies used for the
-product rational basis.
-
-\begin{table}[ht]
-\centering\footnotesize
-\setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.08}
-\begin{tabular}{@{}lc@{}}
-\toprule
-Method & Final $\uparrow$ \\
-\midrule
-\rowcolor[HTML]{EDEDED}
-\multicolumn{2}{@{}l}{\textit{Spline baselines}} \\
-SplineCNN, $k{=}5$ & \yellowc $95.27 \pm 0.15$ \\
-\rowcolor[HTML]{EDEDED}
-\multicolumn{2}{@{}l}{\textit{RBF-GNN with a product basis}} \\
-\textbf{RBF-GNN} (product), $k{=}3$, hat init & \orangec $95.73 \pm 0.06$ \\
-\textbf{RBF-GNN}, Gaussian init & \redc $95.90$ \\
-\textbf{RBF-GNN}, random init & $94.93$ \\
-\textbf{RBF-GNN}, constant init (two variants) & $78$ / $66$ \\
-\bottomrule
-\end{tabular}
-\caption{PascalPF keypoint matching. Final accuracy (\%) is reported as mean
-$\pm$ std over 3 seeds where available. \ranklegend{} mark the three highest
-means.}
-\label{tab:pascalpf}
-\end{table}
-\FloatBarrier
-
-The rational basis has higher mean accuracy than the spline baseline, although
-the difference remains within seed variability. The poor constant
-initialization again shows that a non-degenerate starting basis is essential.
-
+\setcounter{topnumber}{2}
 % \section{Practical recipe}
 % \label{sec:recipe}
 %
@@ -1025,20 +1019,46 @@ initialization again shows that a non-degenerate starting basis is essential.
 % statements are recommended. None of the three counts toward the 9-page
 % main-text limit.
 % ---------------------------------------------------------------------------
+\newpage
 \subsection*{AI use statement}
 
-[TODO --- required by ICLR 2027. Disclose which generative AI tools were used
-and for what.]
+In this work, we used generative AI tools to assist in implementing,
+refactoring and debugging the experimental code. We have not used generative
+AI tools to generate synthetic data, to formulate mathematical claims or to
+assist with translation, and the writing of proofs as well as qualitative and
+thematic data analysis are not applicable to this work. Additionally, we used
+generative AI tools to polish the language and improve the readability of the
+manuscript. We have reviewed all AI-assisted work. AI-assisted code was
+verified and tested for correctness by the authors, and the reported results
+were checked against the logs of the corresponding runs. The authors take full
+responsibility for the integrity, accuracy, and entire content of the
+submission.
 
 \subsection*{Ethics statement}
 
-[TODO --- recommended.]
+All authors have read and adhere to the ICLR Code of Ethics. This work proposes
+a basis for continuous-kernel graph convolutions and evaluates it on
+established benchmarks that are available to the research community. We
+collected no new data and conducted no experiments with human participants.
+Some of the benchmarks contain images or three-dimensional scans of people. We
+used them only as distributed by their creators and in accordance with their
+licences and terms of use, several of which restrict use to non-commercial
+research, and we made no attempt to identify any individual. The contribution
+is methodological and not tied to a particular application, so we do not
+foresee harmful uses beyond those that apply to graph learning methods in
+general.
 
 \subsection*{Reproducibility statement}
 
-[TODO --- recommended. Point at the released code, the named configurations
-in \code{slurm/configs.sh}, the per-run training logs under
-\code{results/logs/}, and the fixed seeds used for each table.]
+An anonymised version of our code is provided as supplementary material and
+will be released publicly under an open-source licence upon acceptance.
+Section~\ref{sec:operator} specifies the rational basis, both initialisation
+procedures and the variance-preserving rescaling, and
+Section~\ref{sec:experiments} states the task, the metric and the number of
+random seeds for every benchmark. All reported results are means and standard
+deviations over independent runs with different seeds. Apart from the replaced
+basis, every host architecture keeps its published configuration unless
+Section~\ref{sec:experiments} states otherwise.
 
 \bibliographystyle{iclr2027_conference}
 \enlargethispage{2\baselineskip}

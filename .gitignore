@@ -4,10 +4,30 @@ __pycache__/
 build/
 dist/
 .pytest_cache/
-data/
-data
+# The dataset root (a directory or a symlink). Anchored, so that nmt/data/,
+# NMT's data-loader package, is not ignored with it.
+/data
 wandb/
 slurm/logs/
 paper/*.aux
 paper/*.log
 paper/*.out
+# Ad-hoc outputs at the top level (e.g. `results/analyze.py > analyze.log`).
+# Anchored, so the checked-in results/logs/**/*.log stay tracked.
+/*.log
+
+# nmt/ run outputs: Slurm job logs, the per-epoch error dumps train_eval.py
+# writes to the working directory, SwinV2 weights (cfg.BACKBONE_DIR default),
+# dataset caches and downloads under data/ (cfg.CACHE_PATH default), run
+# directories (model_dir with settings.json and params/: the default
+# ./results/voc_basic/... and the runs/ of the README example) and
+# checkpoints. The logs of the paper runs are in results/logs/nmt_*/, and
+# nmt/results/analyze.py stays tracked.
+/nmt/slurm/logs/
+/nmt/errors/
+/nmt/utils/checkpoints/
+/nmt/data/*/
+/nmt/results/*/
+/nmt/runs/
+/nmt/**/*.pt
+/nmt/**/*.pth

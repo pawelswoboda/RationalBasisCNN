@@ -1,0 +1,41 @@
+{
+  "default_json": "experiments/voc_basic.json",
+  "DATASET_NAME": "SPair71k",
+  "BATCH_SIZE": 5,
+
+  "_comment_backbone": "SwinV2-L replaced by the plain VGG16 of SplineCNN/DGMC (relu4_2 + relu5_1 = 512 + 512 channels, 512-d global vector), so NMT becomes comparable to DGMC-scale graph matching models. IMAGE_SIZE 256 is the DGMC/ThinkMatch setting and also rescales the edge pseudo-coordinates in utils/build_graphs.py.",
+  "BACKBONE": "vgg16",
+  "IMAGE_SIZE": 256,
+  "SPLINE_CNN": {
+    "input_features": 1024,
+    "output_features": 648,
+    "conv": "spline",
+    "kernel_size": 5,
+    "aggr": "max"
+  },
+
+  "BACKBONE_DIR": "/scratch/hpc-prf-llmrout/hpcabpo/nmt/checkpoints",
+  "SPair": {
+    "ROOT_DIR": "/pc2/groups/hpc-prf-llmrout/hpcabpo/rational-basis-cnn/data/SPair-71k"
+  },
+  "model_dir": "/scratch/hpc-prf-llmrout/hpcabpo/nmt/runs/spair_vgg16_spline",
+
+  "TRAIN": {
+    "_comment_epochs": "lr_schedule long_halving5 defines 12 epochs; max_epochs stops after 7. NMT trains ~11 epochs per day, so 7 epochs is ~15.3 h. Both LR drops (epochs 2 and 5) still happen.",
+    "max_epochs": 7,
+    "EPOCH_ITERS": 2000,
+    "lr_schedule": "long_halving5",
+    "LR": 0.0005,
+    "difficulty_params": {}
+  },
+  "EVAL": {
+    "SAMPLES": 1000,
+    "difficulty_params": {}
+  },
+  "visualize": false,
+  "visualization_params": {
+    "reduced_vis": true,
+    "produce_pdf": false
+  },
+  "combine_classes": false
+}

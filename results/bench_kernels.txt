@@ -1,0 +1,24 @@
+NVIDIA GeForce RTX 4070 Ti SUPER: N=400000 E=12400000 D=3 k=2 (E/N=31.0), 10 reps
+layer                                                        fwd ms  fwd+bwd ms  peak GB
+C 32->32 PyG SplineConv (torch_spline_conv fused, K=8)          96.5       623.9     5.50
+C 32->32 BSplineConv dense basis + basis-first aggr (K=8)      171.6       348.0     5.19
+C 32->32 RationalConv triton, K=8, deg (8,6)                   152.1       443.7     5.65
+C 32->32 RationalConv triton, K=8, deg (5,4)                   150.9       434.8     5.65
+C 32->32 RationalConv triton, K=4, deg (8,6)                    75.6       222.0     5.09
+C 32->32 RationalConv compile, K=8, deg (8,6)                  212.0       583.0     5.65
+C 32->32 RationalConv eager, K=8, deg (8,6)                    394.9       951.4     5.65
+C 16->16 PyG SplineConv (torch_spline_conv fused, K=8)          38.0       265.4     3.30
+C 16->16 BSplineConv dense basis + basis-first aggr (K=8)      125.2       236.4     3.50
+C 16->16 RationalConv triton, K=8, deg (8,6)                   105.8       285.0     3.24
+C 16->16 RationalConv triton, K=8, deg (5,4)                   104.3       276.0     3.24
+C 16->16 RationalConv triton, K=4, deg (8,6)                    51.8       141.6     2.78
+C  8->16 PyG SplineConv (torch_spline_conv fused, K=8)          29.3       186.3     2.57
+C  8->16 BSplineConv dense basis + basis-first aggr (K=8)      104.7       188.5     2.67
+C  8->16 RationalConv triton, K=8, deg (8,6)                    85.3       214.0     2.04
+C  8->16 RationalConv triton, K=8, deg (5,4)                    83.7       204.9     2.04
+C  8->16 RationalConv triton, K=4, deg (8,6)                    41.9       106.5     1.62
+
+basis only (no aggregation):
+torch_spline_conv spline_basis fwd (K=8)                        8.9 ms   1.11 GB
+triton rational basis fwd (K=8, deg 8,6)                        4.4 ms   0.74 GB
+triton rational basis fwd+bwd (K=8, deg 8,6)                   19.2 ms   1.18 GB

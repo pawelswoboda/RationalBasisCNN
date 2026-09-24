@@ -1,0 +1,28 @@
+# Conda environment for PC2 Noctua 2 (H100, driver 595.x -> CUDA 13 capable).
+# Same torch / PyG stack as the RationalBasisCNN project, so the rational-basis
+# convolutions can be imported directly from it.
+#
+# Deliberately WITHOUT pytorch_spline_conv and torch-scatter: the SplineCNN in
+# model/sconv_archs.py is served by rational_cnn's pure-PyTorch BSplineConv, so
+# no PyG C++ extension has to be built. `timm` is not needed either -- the Swin
+# layers it would provide are vendored in utils/timmLayers/.
+# Create/update with: bash hpc/create_environment.sh
+name: nmt
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip>=24
+  - pip:
+      - --extra-index-url=https://download.pytorch.org/whl/cu130
+      - torch==2.12.0+cu130
+      - torchvision==0.27.0+cu130
+      - torch_geometric>=2.8,<2.9
+      - numpy>=1.26,<3
+      - scipy>=1.11,<2
+      - pillow>=10
+      - easydict>=1.13
+      - albumentations>=2.0,<3
+      - tqdm>=4.66
+      - wandb>=0.17
+      - pytest>=8,<9

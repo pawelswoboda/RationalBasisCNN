@@ -1,0 +1,1103 @@
+CPU_SET_HEX_STR_SIZE: 257, Size of mstr: 257
+cpu-bind=MASK - gpu1022, task  0  0 [3708939]: mask |--------|--------|--------|BBBBBBBB|--------|--------|--------|--------|--------|BBBBBBBB|--------|--------||||--------|--------|--------|--------|--------|--------|--------|--------|--------|--------|--------|--------| set
+job=3378405 node=gpu1022 gpu=NVIDIA H100 config=/scratch/hpc-prf-llmrout/hpcabpo/nmt/runs/configs/voc_rational_mv_d54_seed2.json wandb=offline
+dataset=PascalVOC backbone=vgg16 image_size=256 conv=rational model_dir=/scratch/hpc-prf-llmrout/hpcabpo/nmt/runs/voc_vgg16/rational_mv_d54_seed2
+{
+    "BACKBONE": "vgg16",
+    "BACKBONE_DIR": "/scratch/hpc-prf-llmrout/hpcabpo/nmt/checkpoints",
+    "BATCH_SIZE": 8,
+    "CACHE_PATH": "/scratch/hpc-prf-llmrout/hpcabpo/nmt/cache/voc_db",
+    "DATASET_NAME": "PascalVOC",
+    "EVAL": {
+        "SAMPLES": 1000,
+        "difficulty_params": {},
+        "num_graphs_in_matching_instance": 2
+    },
+    "IMAGE_SIZE": 256,
+    "Matching_TF": {
+        "activation": "relu",
+        "batch_norm": true,
+        "d_model": 648,
+        "nGPT_mlp_hidden_mult": 6,
+        "n_decoder": 4,
+        "n_encoder": 4,
+        "n_head": 12,
+        "n_lap_EigVec": 8,
+        "pos_encoding": false
+    },
+    "NORM_MEANS": [
+        0.485,
+        0.456,
+        0.406
+    ],
+    "NORM_STD": [
+        0.229,
+        0.224,
+        0.225
+    ],
+    "RANDOM_SEED": 2,
+    "SPLINE_CNN": {
+        "aggr": "max",
+        "conv": "rational",
+        "degrees": [
+            5,
+            4
+        ],
+        "dim": 2,
+        "init": "spline",
+        "init_noise": 0.001,
+        "input_features": 1024,
+        "kernel_size": 5,
+        "num_bases": 0,
+        "output_features": 648,
+        "poly": "chebyshev",
+        "pyg_init": true,
+        "rational_basis": "multivariate",
+        "safe": "B",
+        "vp": false
+    },
+    "SPair": {
+        "CLASSES": [
+            "aeroplane",
+            "bicycle",
+            "bird",
+            "boat",
+            "boat",
+            "bottle",
+            "bus",
+            "car",
+            "cat",
+            "chair",
+            "cow",
+            "dog",
+            "horse",
+            "motorbike",
+            "person",
+            "pottedplant",
+            "sheep",
+            "train",
+            "tvmonitor"
+        ],
+        "ROOT_DIR": "./data/downloaded/SPair-71k",
+        "size": "large"
+    },
+    "STATISTIC_STEP": 1,
+    "TRACK_GRAD_NORM": false,
+    "TRAIN": {
+        "EPOCH_ITERS": 2000,
+        "LR": 0.0005,
+        "_comment_epochs": "Identical budget to the SPair-71k sweep so the two NMT columns are comparable: lr_schedule long_halving5 defines 12 epochs, max_epochs stops after 7, and both LR drops (epochs 2 and 5) still happen.",
+        "clip_norm": 0,
+        "cutmix_beta": 1.0,
+        "cutmix_prob": 0.3,
+        "difficulty_params": {},
+        "layer_loss_param": 0.3,
+        "lr_schedule": "long_halving5",
+        "max_epochs": 7,
+        "mixup_alpha": 0.8,
+        "mixup_prob": 0.3,
+        "num_graphs_in_matching_instance": 2,
+        "random_erasing_prob": 0.3,
+        "temperature": 0.1,
+        "weight_decay": 0
+    },
+    "USE_SYNTHETIC": false,
+    "VOC2011": {
+        "CLASSES": [
+            "aeroplane",
+            "bicycle",
+            "bird",
+            "boat",
+            "bottle",
+            "bus",
+            "car",
+            "cat",
+            "chair",
+            "cow",
+            "diningtable",
+            "dog",
+            "horse",
+            "motorbike",
+            "person",
+            "pottedplant",
+            "sheep",
+            "sofa",
+            "train",
+            "tvmonitor"
+        ],
+        "KPT_ANNO_DIR": "/pc2/groups/hpc-prf-llmrout/hpcabpo/rational-basis-cnn/data/PascalVOC/raw/annotations/",
+        "ROOT_DIR": "/pc2/groups/hpc-prf-llmrout/hpcabpo/rational-basis-cnn/data/PascalVOC/raw/images/",
+        "SET_SPLIT": "/pc2/groups/hpc-prf-llmrout/hpcabpo/rational-basis-cnn/data/PascalVOC/raw/splits.npz"
+    },
+    "WILLOW": {
+        "CLASSES": [
+            "Car",
+            "Duck",
+            "Face",
+            "Motorbike",
+            "Winebottle"
+        ],
+        "KPT_LEN": 10,
+        "ROOT_DIR": "./data/downloaded/WILLOW/WILLOW-ObjectClass",
+        "TRAIN_NUM": 20,
+        "TRAIN_OFFSET": 0
+    },
+    "_comment_batch_size": "BATCH_SIZE is deliberately NOT overridden here. voc_basic.json sets 8, which is NMT's own PascalVOC recipe; the claim being tested is that only the SplineConv layer changes, so the host recipe is left alone. spair_vgg16.json sets 5 because no author-provided SPair recipe existed.",
+    "_comment_cache": "data/pascal_voc.py writes a filtered-xml pickle to cfg.CACHE_PATH. The default 'data/cache' is repo-relative, i.e. inside the 50 GB HOME quota, and group storage is read-only inside jobs, so it is redirected to scratch.",
+    "_comment_paths": "ROOT_DIR must end in a slash: data/pascal_voc.py builds the image and annotation directories by string concatenation (cfg.VOC2011.ROOT_DIR + 'JPEGImages'). SET_SPLIT points at the split shipped with the shared PascalVOC tree; see NMT_VOC_ROOT in hpc/env.sh for why voc2011_pairs.npz is not required.",
+    "_generated_by": "slurm/make_config.py rational_mv_d54 2 (voc)",
+    "combine_classes": false,
+    "default_json": "experiments/voc_basic.json",
+    "eval_sampling": "intersection",
+    "evaluate_only": false,
+    "exclude_willow_classes": false,
+    "keep_last_checkpoint_only": true,
+    "log_dir": "runs/",
+    "model_dir": "/scratch/hpc-prf-llmrout/hpcabpo/nmt/runs/voc_vgg16/rational_mv_d54_seed2",
+    "save_checkpoint": true,
+    "train_sampling": "intersection",
+    "visualization_params": {
+        "produce_pdf": false,
+        "reduced_vis": true
+    },
+    "visualize": false,
+    "warmstart_path": null
+}
+wandb: Tracking run with wandb version 0.30.0
+wandb: W&B syncing is set to `offline` in this directory. Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Run data is saved locally in /scratch/hpc-prf-llmrout/hpcabpo/nmt/wandb/wandb/offline-run-20260923_064837-w73ze1i3
+wandb: View this run in the terminal with `wandb leet`
+xml list loaded from /scratch/hpc-prf-llmrout/hpcabpo/nmt/cache/voc_db/voc_db_train.pkl
+TRUE EPOCHS:  False
+16000
+Initializing train-set. Randomly sampling 16000 examples.
+/pc2/groups/hpc-prf-llmrout/hpcabpo/nmt/conda/envs/nmt/lib/python3.12/site-packages/albumentations/core/composition.py:331: UserWarning: Got processor for keypoints, but no transform to process it.
+  self._set_keys()
+xml list loaded from /scratch/hpc-prf-llmrout/hpcabpo/nmt/cache/voc_db/voc_db_test.pkl
+TRUE EPOCHS:  False
+1000
+Initializing test-set. Randomly sampling 1000 examples.
+/pc2/groups/hpc-prf-llmrout/hpcabpo/nmt/conda/envs/nmt/lib/python3.12/site-packages/torchvision/models/_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+/pc2/groups/hpc-prf-llmrout/hpcabpo/nmt/conda/envs/nmt/lib/python3.12/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=VGG16_Weights.IMAGENET1K_V1`. You can also use `weights=VGG16_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+stopping after 7 epochs (cfg.TRAIN.max_epochs; schedule 'long_halving5' defines 12)
+Start training...
+NMT model on device: cuda:0
+Epoch 0/6
+----------
+lr = 1.50e-05, 5.00e-04
+Epoch 0/6:   0%|          | 0/2000 [00:00<?, ?it/s]/pc2/groups/hpc-prf-llmrout/hpcabpo/nmt/conda/envs/nmt/lib/python3.12/site-packages/torch_geometric/utils/_scatter.py:91: UserWarning: The usage of `scatter(reduce='max')` can be accelerated via the 'torch-scatter' package, but it was not found
+  warnings.warn(
+[rank0]:[W923 06:48:46.822299563 reducer.cpp:1528] Warning: find_unused_parameters=True was specified in DDP constructor, but did not find any unused parameters in the forward pass. This flag results in an extra traversal of the autograd graph every iteration,  which can adversely affect performance. If your model indeed never has any unused parameters in the forward pass, consider turning this flag off. Note that this warning may be a false positive if your model has flow control causing later iterations to have unused parameters. (function operator())
+Epoch 0/6: 100%|██████████| 2000/2000 [07:25<00:00,  4.49it/s, loss=2.2682, acc=0.6804]
+epoch loss: 3.304846724331379, epoch accuracy: 0.68042929060097
+completed in 445.20s (7.42m)
+Start evaluation...
+Evaluating class aeroplane: 0/20
+Class aeroplane Iteration 40   49.19sample/s
+Class aeroplane Iteration 80   41.53sample/s
+Class aeroplane Iteration 120  46.92sample/s
+Class aeroplane acc = 0.5331
+Evaluating class bicycle: 1/20
+Class bicycle  Iteration 40   48.87sample/s
+Class bicycle  Iteration 80   47.76sample/s
+Class bicycle  Iteration 120  49.80sample/s
+Class bicycle acc = 0.7763
+Evaluating class bird: 2/20
+Class bird     Iteration 40   44.69sample/s
+Class bird     Iteration 80   49.25sample/s
+Class bird     Iteration 120  46.75sample/s
+Class bird acc = 0.7247
+Evaluating class boat: 3/20
+Class boat     Iteration 40   47.28sample/s
+Class boat     Iteration 80   41.62sample/s
+Class boat     Iteration 120  54.11sample/s
+Class boat acc = 0.7278
+Evaluating class bottle: 4/20
+Class bottle   Iteration 40   76.71sample/s
+Class bottle   Iteration 80   47.36sample/s
+Class bottle   Iteration 120  42.96sample/s
+Class bottle acc = 0.8674
+Evaluating class bus: 5/20
+Class bus      Iteration 40   37.89sample/s
+Class bus      Iteration 80   46.96sample/s
+Class bus      Iteration 120  42.65sample/s
+Class bus acc = 0.9035
+Evaluating class car: 6/20
+Class car      Iteration 40   34.42sample/s
+Class car      Iteration 80   38.79sample/s
+Class car      Iteration 120  34.61sample/s
+Class car acc = 0.8341
+Evaluating class cat: 7/20
+Class cat      Iteration 40   41.22sample/s
+Class cat      Iteration 80   40.95sample/s
+Class cat      Iteration 120  42.13sample/s
+Class cat acc = 0.7756
+Evaluating class chair: 8/20
+Class chair    Iteration 40   40.48sample/s
+Class chair    Iteration 80   45.61sample/s
+Class chair    Iteration 120  43.92sample/s
+Class chair acc = 0.4927
+Evaluating class cow: 9/20
+Class cow      Iteration 40   40.39sample/s
+Class cow      Iteration 80   46.35sample/s
+Class cow      Iteration 120  42.00sample/s
+Class cow acc = 0.7775
+Evaluating class diningtable: 10/20
+Class diningtable Iteration 40   43.56sample/s
+Class diningtable Iteration 80   50.33sample/s
+Class diningtable Iteration 120  45.79sample/s
+Class diningtable acc = 0.8529
+Evaluating class dog: 11/20
+Class dog      Iteration 40   40.74sample/s
+Class dog      Iteration 80   47.95sample/s
+Class dog      Iteration 120  45.05sample/s
+Class dog acc = 0.7653
+Evaluating class horse: 12/20
+Class horse    Iteration 40   40.42sample/s
+Class horse    Iteration 80   49.54sample/s
+Class horse    Iteration 120  47.40sample/s
+Class horse acc = 0.7803
+Evaluating class motorbike: 13/20
+Class motorbike Iteration 40   40.68sample/s
+Class motorbike Iteration 80   47.54sample/s
+Class motorbike Iteration 120  45.39sample/s
+Class motorbike acc = 0.7650
+Evaluating class person: 14/20
+Class person   Iteration 40   43.66sample/s
+Class person   Iteration 80   51.27sample/s
+Class person   Iteration 120  46.74sample/s
+Class person acc = 0.5625
+Evaluating class pottedplant: 15/20
+Class pottedplant Iteration 40   39.26sample/s
+Class pottedplant Iteration 80   47.78sample/s
+Class pottedplant Iteration 120  42.36sample/s
+Class pottedplant acc = 0.9855
+Evaluating class sheep: 16/20
+Class sheep    Iteration 40   29.49sample/s
+Class sheep    Iteration 80   22.83sample/s
+Class sheep    Iteration 120  24.53sample/s
+Class sheep acc = 0.7276
+Evaluating class sofa: 17/20
+Class sofa     Iteration 40   29.07sample/s
+Class sofa     Iteration 80   27.90sample/s
+Class sofa     Iteration 120  28.46sample/s
+Class sofa acc = 0.7791
+Evaluating class train: 18/20
+Class train    Iteration 40   18.95sample/s
+Class train    Iteration 80   21.02sample/s
+Class train    Iteration 120  22.32sample/s
+Class train acc = 0.9709
+Evaluating class tvmonitor: 19/20
+Class tvmonitor Iteration 40   24.04sample/s
+Class tvmonitor Iteration 80   25.65sample/s
+Class tvmonitor Iteration 120  30.88sample/s
+Class tvmonitor acc = 0.9595
+Evaluation complete in 8m 41s
+Matching accuracy
+aeroplane = 0.5331
+bicycle = 0.7763
+bird = 0.7247
+boat = 0.7278
+bottle = 0.8674
+bus = 0.9035
+car = 0.8341
+cat = 0.7756
+chair = 0.4927
+cow = 0.7775
+diningtable = 0.8529
+dog = 0.7653
+horse = 0.7803
+motorbike = 0.7650
+person = 0.5625
+pottedplant = 0.9855
+sheep = 0.7276
+sofa = 0.7791
+train = 0.9709
+tvmonitor = 0.9595
+average = 0.7781
+Epoch 1/6
+----------
+lr = 1.50e-05, 5.00e-04
+Epoch 1/6: 100%|██████████| 2000/2000 [09:41<00:00,  3.44it/s, loss=1.9811, acc=0.7946]
+epoch loss: 2.4285586293935775, epoch accuracy: 0.7946230470019217
+completed in 581.13s (9.69m)
+Start evaluation...
+Evaluating class aeroplane: 0/20
+Class aeroplane Iteration 40   26.53sample/s
+Class aeroplane Iteration 80   26.45sample/s
+Class aeroplane Iteration 120  31.91sample/s
+Class aeroplane acc = 0.5947
+Evaluating class bicycle: 1/20
+Class bicycle  Iteration 40   28.35sample/s
+Class bicycle  Iteration 80   29.29sample/s
+Class bicycle  Iteration 120  30.14sample/s
+Class bicycle acc = 0.7906
+Evaluating class bird: 2/20
+Class bird     Iteration 40   22.92sample/s
+Class bird     Iteration 80   26.23sample/s
+Class bird     Iteration 120  26.25sample/s
+Class bird acc = 0.7513
+Evaluating class boat: 3/20
+Class boat     Iteration 40   26.71sample/s
+Class boat     Iteration 80   26.10sample/s
+Class boat     Iteration 120  29.78sample/s
+Class boat acc = 0.7633
+Evaluating class bottle: 4/20
+Class bottle   Iteration 40   27.97sample/s
+Class bottle   Iteration 80   31.86sample/s
+Class bottle   Iteration 120  28.92sample/s
+Class bottle acc = 0.8822
+Evaluating class bus: 5/20
+Class bus      Iteration 40   25.83sample/s
+Class bus      Iteration 80   30.89sample/s
+Class bus      Iteration 120  28.48sample/s
+Class bus acc = 0.9161
+Evaluating class car: 6/20
+Class car      Iteration 40   21.91sample/s
+Class car      Iteration 80   25.67sample/s
+Class car      Iteration 120  24.19sample/s
+Class car acc = 0.8568
+Evaluating class cat: 7/20
+Class cat      Iteration 40   25.38sample/s
+Class cat      Iteration 80   28.48sample/s
+Class cat      Iteration 120  29.94sample/s
+Class cat acc = 0.8150
+Evaluating class chair: 8/20
+Class chair    Iteration 40   27.11sample/s
+Class chair    Iteration 80   29.86sample/s
+Class chair    Iteration 120  29.33sample/s
+Class chair acc = 0.5899
+Evaluating class cow: 9/20
+Class cow      Iteration 40   23.99sample/s
+Class cow      Iteration 80   27.47sample/s
+Class cow      Iteration 120  27.26sample/s
+Class cow acc = 0.7984
+Evaluating class diningtable: 10/20
+Class diningtable Iteration 40   24.87sample/s
+Class diningtable Iteration 80   27.75sample/s
+Class diningtable Iteration 120  27.21sample/s
+Class diningtable acc = 0.8854
+Evaluating class dog: 11/20
+Class dog      Iteration 40   23.17sample/s
+Class dog      Iteration 80   25.97sample/s
+Class dog      Iteration 120  27.88sample/s
+Class dog acc = 0.7900
+Evaluating class horse: 12/20
+Class horse    Iteration 40   24.60sample/s
+Class horse    Iteration 80   27.85sample/s
+Class horse    Iteration 120  27.21sample/s
+Class horse acc = 0.7891
+Evaluating class motorbike: 13/20
+Class motorbike Iteration 40   27.29sample/s
+Class motorbike Iteration 80   27.63sample/s
+Class motorbike Iteration 120  27.53sample/s
+Class motorbike acc = 0.8055
+Evaluating class person: 14/20
+Class person   Iteration 40   27.40sample/s
+Class person   Iteration 80   29.31sample/s
+Class person   Iteration 120  28.02sample/s
+Class person acc = 0.6182
+Evaluating class pottedplant: 15/20
+Class pottedplant Iteration 40   27.09sample/s
+Class pottedplant Iteration 80   33.42sample/s
+Class pottedplant Iteration 120  27.50sample/s
+Class pottedplant acc = 0.9795
+Evaluating class sheep: 16/20
+Class sheep    Iteration 40   19.56sample/s
+Class sheep    Iteration 80   21.24sample/s
+Class sheep    Iteration 120  22.13sample/s
+Class sheep acc = 0.7598
+Evaluating class sofa: 17/20
+Class sofa     Iteration 40   27.78sample/s
+Class sofa     Iteration 80   26.68sample/s
+Class sofa     Iteration 120  27.16sample/s
+Class sofa acc = 0.7942
+Evaluating class train: 18/20
+Class train    Iteration 40   17.92sample/s
+Class train    Iteration 80   20.82sample/s
+Class train    Iteration 120  21.71sample/s
+Class train acc = 0.9692
+Evaluating class tvmonitor: 19/20
+Class tvmonitor Iteration 40   24.00sample/s
+Class tvmonitor Iteration 80   24.11sample/s
+Class tvmonitor Iteration 120  27.51sample/s
+Class tvmonitor acc = 0.9581
+Evaluation complete in 12m 47s
+Matching accuracy
+aeroplane = 0.5947
+bicycle = 0.7906
+bird = 0.7513
+boat = 0.7633
+bottle = 0.8822
+bus = 0.9161
+car = 0.8568
+cat = 0.8150
+chair = 0.5899
+cow = 0.7984
+diningtable = 0.8854
+dog = 0.7900
+horse = 0.7891
+motorbike = 0.8055
+person = 0.6182
+pottedplant = 0.9795
+sheep = 0.7598
+sofa = 0.7942
+train = 0.9692
+tvmonitor = 0.9581
+average = 0.8054
+Epoch 2/6
+----------
+lr = 1.50e-06, 5.00e-05
+Epoch 2/6: 100%|██████████| 2000/2000 [10:43<00:00,  3.11it/s, loss=2.9157, acc=0.8461]
+epoch loss: 2.0722118289470672, epoch accuracy: 0.8461238727873233
+completed in 643.98s (10.73m)
+Start evaluation...
+Evaluating class aeroplane: 0/20
+Class aeroplane Iteration 40   25.10sample/s
+Class aeroplane Iteration 80   24.92sample/s
+Class aeroplane Iteration 120  29.53sample/s
+Class aeroplane acc = 0.6297
+Evaluating class bicycle: 1/20
+Class bicycle  Iteration 40   25.27sample/s
+Class bicycle  Iteration 80   25.19sample/s
+Class bicycle  Iteration 120  26.83sample/s
+Class bicycle acc = 0.7928
+Evaluating class bird: 2/20
+Class bird     Iteration 40   22.26sample/s
+Class bird     Iteration 80   24.24sample/s
+Class bird     Iteration 120  23.75sample/s
+Class bird acc = 0.7858
+Evaluating class boat: 3/20
+Class boat     Iteration 40   25.11sample/s
+Class boat     Iteration 80   23.89sample/s
+Class boat     Iteration 120  25.87sample/s
+Class boat acc = 0.7929
+Evaluating class bottle: 4/20
+Class bottle   Iteration 40   26.16sample/s
+Class bottle   Iteration 80   29.62sample/s
+Class bottle   Iteration 120  26.34sample/s
+Class bottle acc = 0.8822
+Evaluating class bus: 5/20
+Class bus      Iteration 40   23.03sample/s
+Class bus      Iteration 80   27.63sample/s
+Class bus      Iteration 120  26.10sample/s
+Class bus acc = 0.9378
+Evaluating class car: 6/20
+Class car      Iteration 40   20.68sample/s
+Class car      Iteration 80   24.27sample/s
+Class car      Iteration 120  21.05sample/s
+Class car acc = 0.8834
+Evaluating class cat: 7/20
+Class cat      Iteration 40   23.36sample/s
+Class cat      Iteration 80   25.83sample/s
+Class cat      Iteration 120  28.53sample/s
+Class cat acc = 0.8467
+Evaluating class chair: 8/20
+Class chair    Iteration 40   25.61sample/s
+Class chair    Iteration 80   28.60sample/s
+Class chair    Iteration 120  28.78sample/s
+Class chair acc = 0.6285
+Evaluating class cow: 9/20
+Class cow      Iteration 40   23.78sample/s
+Class cow      Iteration 80   27.70sample/s
+Class cow      Iteration 120  27.64sample/s
+Class cow acc = 0.8032
+Evaluating class diningtable: 10/20
+Class diningtable Iteration 40   26.81sample/s
+Class diningtable Iteration 80   30.39sample/s
+Class diningtable Iteration 120  30.37sample/s
+Class diningtable acc = 0.9421
+Evaluating class dog: 11/20
+Class dog      Iteration 40   25.64sample/s
+Class dog      Iteration 80   27.89sample/s
+Class dog      Iteration 120  30.17sample/s
+Class dog acc = 0.8166
+Evaluating class horse: 12/20
+Class horse    Iteration 40   24.94sample/s
+Class horse    Iteration 80   28.09sample/s
+Class horse    Iteration 120  28.19sample/s
+Class horse acc = 0.8014
+Evaluating class motorbike: 13/20
+Class motorbike Iteration 40   28.50sample/s
+Class motorbike Iteration 80   29.65sample/s
+Class motorbike Iteration 120  27.62sample/s
+Class motorbike acc = 0.8207
+Evaluating class person: 14/20
+Class person   Iteration 40   27.18sample/s
+Class person   Iteration 80   30.31sample/s
+Class person   Iteration 120  28.05sample/s
+Class person acc = 0.6672
+Evaluating class pottedplant: 15/20
+Class pottedplant Iteration 40   27.49sample/s
+Class pottedplant Iteration 80   32.99sample/s
+Class pottedplant Iteration 120  27.61sample/s
+Class pottedplant acc = 0.9851
+Evaluating class sheep: 16/20
+Class sheep    Iteration 40   20.46sample/s
+Class sheep    Iteration 80   23.34sample/s
+Class sheep    Iteration 120  23.31sample/s
+Class sheep acc = 0.7671
+Evaluating class sofa: 17/20
+Class sofa     Iteration 40   29.24sample/s
+Class sofa     Iteration 80   28.68sample/s
+Class sofa     Iteration 120  27.94sample/s
+Class sofa acc = 0.8259
+Evaluating class train: 18/20
+Class train    Iteration 40   18.94sample/s
+Class train    Iteration 80   21.20sample/s
+Class train    Iteration 120  22.12sample/s
+Class train acc = 0.9776
+Evaluating class tvmonitor: 19/20
+Class tvmonitor Iteration 40   24.58sample/s
+Class tvmonitor Iteration 80   24.61sample/s
+Class tvmonitor Iteration 120  26.62sample/s
+Class tvmonitor acc = 0.9617
+Evaluation complete in 12m 60s
+Matching accuracy
+aeroplane = 0.6297
+bicycle = 0.7928
+bird = 0.7858
+boat = 0.7929
+bottle = 0.8822
+bus = 0.9378
+car = 0.8834
+cat = 0.8467
+chair = 0.6285
+cow = 0.8032
+diningtable = 0.9421
+dog = 0.8166
+horse = 0.8014
+motorbike = 0.8207
+person = 0.6672
+pottedplant = 0.9851
+sheep = 0.7671
+sofa = 0.8259
+train = 0.9776
+tvmonitor = 0.9617
+average = 0.8274
+Epoch 3/6
+----------
+lr = 1.50e-06, 5.00e-05
+Epoch 3/6: 100%|██████████| 2000/2000 [10:53<00:00,  3.06it/s, loss=3.0100, acc=0.8647]
+epoch loss: 1.9260102976113558, epoch accuracy: 0.8647225748637144
+completed in 653.29s (10.89m)
+Start evaluation...
+Evaluating class aeroplane: 0/20
+Class aeroplane Iteration 40   22.73sample/s
+Class aeroplane Iteration 80   22.27sample/s
+Class aeroplane Iteration 120  25.13sample/s
+Class aeroplane acc = 0.6458
+Evaluating class bicycle: 1/20
+Class bicycle  Iteration 40   23.69sample/s
+Class bicycle  Iteration 80   24.72sample/s
+Class bicycle  Iteration 120  24.93sample/s
+Class bicycle acc = 0.7944
+Evaluating class bird: 2/20
+Class bird     Iteration 40   20.49sample/s
+Class bird     Iteration 80   21.62sample/s
+Class bird     Iteration 120  21.61sample/s
+Class bird acc = 0.7965
+Evaluating class boat: 3/20
+Class boat     Iteration 40   23.96sample/s
+Class boat     Iteration 80   21.02sample/s
+Class boat     Iteration 120  24.61sample/s
+Class boat acc = 0.7886
+Evaluating class bottle: 4/20
+Class bottle   Iteration 40   26.58sample/s
+Class bottle   Iteration 80   31.64sample/s
+Class bottle   Iteration 120  26.31sample/s
+Class bottle acc = 0.8831
+Evaluating class bus: 5/20
+Class bus      Iteration 40   24.40sample/s
+Class bus      Iteration 80   29.04sample/s
+Class bus      Iteration 120  26.51sample/s
+Class bus acc = 0.9406
+Evaluating class car: 6/20
+Class car      Iteration 40   21.84sample/s
+Class car      Iteration 80   25.94sample/s
+Class car      Iteration 120  23.86sample/s
+Class car acc = 0.8936
+Evaluating class cat: 7/20
+Class cat      Iteration 40   25.68sample/s
+Class cat      Iteration 80   29.01sample/s
+Class cat      Iteration 120  31.15sample/s
+Class cat acc = 0.8494
+Evaluating class chair: 8/20
+Class chair    Iteration 40   26.75sample/s
+Class chair    Iteration 80   30.39sample/s
+Class chair    Iteration 120  29.15sample/s
+Class chair acc = 0.6444
+Evaluating class cow: 9/20
+Class cow      Iteration 40   24.96sample/s
+Class cow      Iteration 80   29.43sample/s
+Class cow      Iteration 120  28.16sample/s
+Class cow acc = 0.8096
+Evaluating class diningtable: 10/20
+Class diningtable Iteration 40   26.90sample/s
+Class diningtable Iteration 80   30.57sample/s
+Class diningtable Iteration 120  28.22sample/s
+Class diningtable acc = 0.9197
+Evaluating class dog: 11/20
+Class dog      Iteration 40   25.55sample/s
+Class dog      Iteration 80   28.23sample/s
+Class dog      Iteration 120  28.94sample/s
+Class dog acc = 0.8201
+Evaluating class horse: 12/20
+Class horse    Iteration 40   24.85sample/s
+Class horse    Iteration 80   26.02sample/s
+Class horse    Iteration 120  28.02sample/s
+Class horse acc = 0.8159
+Evaluating class motorbike: 13/20
+Class motorbike Iteration 40   28.05sample/s
+Class motorbike Iteration 80   28.73sample/s
+Class motorbike Iteration 120  28.67sample/s
+Class motorbike acc = 0.8371
+Evaluating class person: 14/20
+Class person   Iteration 40   28.22sample/s
+Class person   Iteration 80   30.65sample/s
+Class person   Iteration 120  29.01sample/s
+Class person acc = 0.6797
+Evaluating class pottedplant: 15/20
+Class pottedplant Iteration 40   27.03sample/s
+Class pottedplant Iteration 80   36.19sample/s
+Class pottedplant Iteration 120  27.22sample/s
+Class pottedplant acc = 0.9857
+Evaluating class sheep: 16/20
+Class sheep    Iteration 40   17.89sample/s
+Class sheep    Iteration 80   19.99sample/s
+Class sheep    Iteration 120  20.32sample/s
+Class sheep acc = 0.7742
+Evaluating class sofa: 17/20
+Class sofa     Iteration 40   25.63sample/s
+Class sofa     Iteration 80   26.28sample/s
+Class sofa     Iteration 120  25.74sample/s
+Class sofa acc = 0.8455
+Evaluating class train: 18/20
+Class train    Iteration 40   17.71sample/s
+Class train    Iteration 80   19.27sample/s
+Class train    Iteration 120  21.28sample/s
+Class train acc = 0.9782
+Evaluating class tvmonitor: 19/20
+Class tvmonitor Iteration 40   25.91sample/s
+Class tvmonitor Iteration 80   26.98sample/s
+Class tvmonitor Iteration 120  29.06sample/s
+Class tvmonitor acc = 0.9639
+Evaluation complete in 13m 13s
+Matching accuracy
+aeroplane = 0.6458
+bicycle = 0.7944
+bird = 0.7965
+boat = 0.7886
+bottle = 0.8831
+bus = 0.9406
+car = 0.8936
+cat = 0.8494
+chair = 0.6444
+cow = 0.8096
+diningtable = 0.9197
+dog = 0.8201
+horse = 0.8159
+motorbike = 0.8371
+person = 0.6797
+pottedplant = 0.9857
+sheep = 0.7742
+sofa = 0.8455
+train = 0.9782
+tvmonitor = 0.9639
+average = 0.8333
+Epoch 4/6
+----------
+lr = 1.50e-06, 5.00e-05
+Epoch 4/6: 100%|██████████| 2000/2000 [10:06<00:00,  3.30it/s, loss=1.8040, acc=0.8795]
+epoch loss: 1.845650488525629, epoch accuracy: 0.879502079310857
+completed in 606.02s (10.10m)
+Start evaluation...
+Evaluating class aeroplane: 0/20
+Class aeroplane Iteration 40   29.82sample/s
+Class aeroplane Iteration 80   28.32sample/s
+Class aeroplane Iteration 120  32.81sample/s
+Class aeroplane acc = 0.6474
+Evaluating class bicycle: 1/20
+Class bicycle  Iteration 40   29.87sample/s
+Class bicycle  Iteration 80   30.72sample/s
+Class bicycle  Iteration 120  31.41sample/s
+Class bicycle acc = 0.8044
+Evaluating class bird: 2/20
+Class bird     Iteration 40   26.05sample/s
+Class bird     Iteration 80   27.79sample/s
+Class bird     Iteration 120  28.77sample/s
+Class bird acc = 0.7888
+Evaluating class boat: 3/20
+Class boat     Iteration 40   30.75sample/s
+Class boat     Iteration 80   27.00sample/s
+Class boat     Iteration 120  30.26sample/s
+Class boat acc = 0.7914
+Evaluating class bottle: 4/20
+Class bottle   Iteration 40   30.74sample/s
+Class bottle   Iteration 80   35.83sample/s
+Class bottle   Iteration 120  30.31sample/s
+Class bottle acc = 0.8820
+Evaluating class bus: 5/20
+Class bus      Iteration 40   28.93sample/s
+Class bus      Iteration 80   32.89sample/s
+Class bus      Iteration 120  30.13sample/s
+Class bus acc = 0.9387
+Evaluating class car: 6/20
+Class car      Iteration 40   24.10sample/s
+Class car      Iteration 80   29.68sample/s
+Class car      Iteration 120  26.23sample/s
+Class car acc = 0.8978
+Evaluating class cat: 7/20
+Class cat      Iteration 40   28.05sample/s
+Class cat      Iteration 80   30.37sample/s
+Class cat      Iteration 120  31.39sample/s
+Class cat acc = 0.8457
+Evaluating class chair: 8/20
+Class chair    Iteration 40   29.39sample/s
+Class chair    Iteration 80   27.74sample/s
+Class chair    Iteration 120  31.53sample/s
+Class chair acc = 0.6489
+Evaluating class cow: 9/20
+Class cow      Iteration 40   27.86sample/s
+Class cow      Iteration 80   28.84sample/s
+Class cow      Iteration 120  32.61sample/s
+Class cow acc = 0.8258
+Evaluating class diningtable: 10/20
+Class diningtable Iteration 40   29.50sample/s
+Class diningtable Iteration 80   34.73sample/s
+Class diningtable Iteration 120  31.15sample/s
+Class diningtable acc = 0.9358
+Evaluating class dog: 11/20
+Class dog      Iteration 40   28.20sample/s
+Class dog      Iteration 80   31.13sample/s
+Class dog      Iteration 120  31.06sample/s
+Class dog acc = 0.8232
+Evaluating class horse: 12/20
+Class horse    Iteration 40   25.80sample/s
+Class horse    Iteration 80   30.65sample/s
+Class horse    Iteration 120  30.30sample/s
+Class horse acc = 0.8217
+Evaluating class motorbike: 13/20
+Class motorbike Iteration 40   28.67sample/s
+Class motorbike Iteration 80   31.56sample/s
+Class motorbike Iteration 120  29.93sample/s
+Class motorbike acc = 0.8340
+Evaluating class person: 14/20
+Class person   Iteration 40   30.33sample/s
+Class person   Iteration 80   32.20sample/s
+Class person   Iteration 120  28.31sample/s
+Class person acc = 0.6922
+Evaluating class pottedplant: 15/20
+Class pottedplant Iteration 40   29.06sample/s
+Class pottedplant Iteration 80   35.46sample/s
+Class pottedplant Iteration 120  29.08sample/s
+Class pottedplant acc = 0.9869
+Evaluating class sheep: 16/20
+Class sheep    Iteration 40   20.12sample/s
+Class sheep    Iteration 80   23.15sample/s
+Class sheep    Iteration 120  23.50sample/s
+Class sheep acc = 0.7767
+Evaluating class sofa: 17/20
+Class sofa     Iteration 40   27.89sample/s
+Class sofa     Iteration 80   32.82sample/s
+Class sofa     Iteration 120  29.00sample/s
+Class sofa acc = 0.8199
+Evaluating class train: 18/20
+Class train    Iteration 40   19.81sample/s
+Class train    Iteration 80   21.43sample/s
+Class train    Iteration 120  22.29sample/s
+Class train acc = 0.9776
+Evaluating class tvmonitor: 19/20
+Class tvmonitor Iteration 40   26.51sample/s
+Class tvmonitor Iteration 80   27.88sample/s
+Class tvmonitor Iteration 120  31.64sample/s
+Class tvmonitor acc = 0.9570
+Evaluation complete in 11m 44s
+Matching accuracy
+aeroplane = 0.6474
+bicycle = 0.8044
+bird = 0.7888
+boat = 0.7914
+bottle = 0.8820
+bus = 0.9387
+car = 0.8978
+cat = 0.8457
+chair = 0.6489
+cow = 0.8258
+diningtable = 0.9358
+dog = 0.8232
+horse = 0.8217
+motorbike = 0.8340
+person = 0.6922
+pottedplant = 0.9869
+sheep = 0.7767
+sofa = 0.8199
+train = 0.9776
+tvmonitor = 0.9570
+average = 0.8348
+Epoch 5/6
+----------
+lr = 1.50e-07, 5.00e-06
+Epoch 5/6: 100%|██████████| 2000/2000 [09:23<00:00,  3.55it/s, loss=2.0532, acc=0.8841]
+epoch loss: 1.7991417060643435, epoch accuracy: 0.8840698030411267
+completed in 563.10s (9.39m)
+Start evaluation...
+Evaluating class aeroplane: 0/20
+Class aeroplane Iteration 40   24.70sample/s
+Class aeroplane Iteration 80   24.45sample/s
+Class aeroplane Iteration 120  29.03sample/s
+Class aeroplane acc = 0.6488
+Evaluating class bicycle: 1/20
+Class bicycle  Iteration 40   28.42sample/s
+Class bicycle  Iteration 80   31.56sample/s
+Class bicycle  Iteration 120  35.40sample/s
+Class bicycle acc = 0.8110
+Evaluating class bird: 2/20
+Class bird     Iteration 40   25.36sample/s
+Class bird     Iteration 80   29.83sample/s
+Class bird     Iteration 120  28.04sample/s
+Class bird acc = 0.7927
+Evaluating class boat: 3/20
+Class boat     Iteration 40   29.27sample/s
+Class boat     Iteration 80   27.82sample/s
+Class boat     Iteration 120  32.50sample/s
+Class boat acc = 0.7973
+Evaluating class bottle: 4/20
+Class bottle   Iteration 40   31.07sample/s
+Class bottle   Iteration 80   37.06sample/s
+Class bottle   Iteration 120  33.69sample/s
+Class bottle acc = 0.8845
+Evaluating class bus: 5/20
+Class bus      Iteration 40   29.13sample/s
+Class bus      Iteration 80   34.83sample/s
+Class bus      Iteration 120  31.87sample/s
+Class bus acc = 0.9406
+Evaluating class car: 6/20
+Class car      Iteration 40   24.27sample/s
+Class car      Iteration 80   28.86sample/s
+Class car      Iteration 120  26.74sample/s
+Class car acc = 0.8984
+Evaluating class cat: 7/20
+Class cat      Iteration 40   30.42sample/s
+Class cat      Iteration 80   34.13sample/s
+Class cat      Iteration 120  38.07sample/s
+Class cat acc = 0.8509
+Evaluating class chair: 8/20
+Class chair    Iteration 40   32.96sample/s
+Class chair    Iteration 80   34.61sample/s
+Class chair    Iteration 120  36.14sample/s
+Class chair acc = 0.6510
+Evaluating class cow: 9/20
+Class cow      Iteration 40   30.13sample/s
+Class cow      Iteration 80   34.32sample/s
+Class cow      Iteration 120  33.94sample/s
+Class cow acc = 0.8272
+Evaluating class diningtable: 10/20
+Class diningtable Iteration 40   30.69sample/s
+Class diningtable Iteration 80   35.22sample/s
+Class diningtable Iteration 120  34.38sample/s
+Class diningtable acc = 0.9358
+Evaluating class dog: 11/20
+Class dog      Iteration 40   29.06sample/s
+Class dog      Iteration 80   30.76sample/s
+Class dog      Iteration 120  32.85sample/s
+Class dog acc = 0.8250
+Evaluating class horse: 12/20
+Class horse    Iteration 40   27.34sample/s
+Class horse    Iteration 80   31.28sample/s
+Class horse    Iteration 120  32.65sample/s
+Class horse acc = 0.8250
+Evaluating class motorbike: 13/20
+Class motorbike Iteration 40   30.59sample/s
+Class motorbike Iteration 80   33.46sample/s
+Class motorbike Iteration 120  33.61sample/s
+Class motorbike acc = 0.8353
+Evaluating class person: 14/20
+Class person   Iteration 40   31.44sample/s
+Class person   Iteration 80   35.02sample/s
+Class person   Iteration 120  33.19sample/s
+Class person acc = 0.6955
+Evaluating class pottedplant: 15/20
+Class pottedplant Iteration 40   33.20sample/s
+Class pottedplant Iteration 80   41.47sample/s
+Class pottedplant Iteration 120  33.66sample/s
+Class pottedplant acc = 0.9871
+Evaluating class sheep: 16/20
+Class sheep    Iteration 40   23.12sample/s
+Class sheep    Iteration 80   25.85sample/s
+Class sheep    Iteration 120  27.27sample/s
+Class sheep acc = 0.7803
+Evaluating class sofa: 17/20
+Class sofa     Iteration 40   32.75sample/s
+Class sofa     Iteration 80   34.14sample/s
+Class sofa     Iteration 120  31.58sample/s
+Class sofa acc = 0.8225
+Evaluating class train: 18/20
+Class train    Iteration 40   21.75sample/s
+Class train    Iteration 80   24.27sample/s
+Class train    Iteration 120  26.80sample/s
+Class train acc = 0.9776
+Evaluating class tvmonitor: 19/20
+Class tvmonitor Iteration 40   30.88sample/s
+Class tvmonitor Iteration 80   29.69sample/s
+Class tvmonitor Iteration 120  33.21sample/s
+Class tvmonitor acc = 0.9581
+Evaluation complete in 11m 0s
+Matching accuracy
+aeroplane = 0.6488
+bicycle = 0.8110
+bird = 0.7927
+boat = 0.7973
+bottle = 0.8845
+bus = 0.9406
+car = 0.8984
+cat = 0.8509
+chair = 0.6510
+cow = 0.8272
+diningtable = 0.9358
+dog = 0.8250
+horse = 0.8250
+motorbike = 0.8353
+person = 0.6955
+pottedplant = 0.9871
+sheep = 0.7803
+sofa = 0.8225
+train = 0.9776
+tvmonitor = 0.9581
+average = 0.8372
+Epoch 6/6
+----------
+lr = 1.50e-07, 5.00e-06
+Epoch 6/6: 100%|██████████| 2000/2000 [07:51<00:00,  4.24it/s, loss=2.4205, acc=0.8895]
+epoch loss: 1.7815087052881717, epoch accuracy: 0.8894958609888881
+completed in 471.68s (7.86m)
+Start evaluation...
+Evaluating class aeroplane: 0/20
+Class aeroplane Iteration 40   36.60sample/s
+Class aeroplane Iteration 80   33.59sample/s
+Class aeroplane Iteration 120  36.76sample/s
+Class aeroplane acc = 0.6505
+Evaluating class bicycle: 1/20
+Class bicycle  Iteration 40   36.83sample/s
+Class bicycle  Iteration 80   36.31sample/s
+Class bicycle  Iteration 120  35.64sample/s
+Class bicycle acc = 0.8132
+Evaluating class bird: 2/20
+Class bird     Iteration 40   32.52sample/s
+Class bird     Iteration 80   32.95sample/s
+Class bird     Iteration 120  32.57sample/s
+Class bird acc = 0.7934
+Evaluating class boat: 3/20
+Class boat     Iteration 40   37.69sample/s
+Class boat     Iteration 80   33.71sample/s
+Class boat     Iteration 120  36.33sample/s
+Class boat acc = 0.7988
+Evaluating class bottle: 4/20
+Class bottle   Iteration 40   38.15sample/s
+Class bottle   Iteration 80   40.13sample/s
+Class bottle   Iteration 120  44.05sample/s
+Class bottle acc = 0.8870
+Evaluating class bus: 5/20
+Class bus      Iteration 40   33.83sample/s
+Class bus      Iteration 80   37.25sample/s
+Class bus      Iteration 120  40.65sample/s
+Class bus acc = 0.9408
+Evaluating class car: 6/20
+Class car      Iteration 40   30.59sample/s
+Class car      Iteration 80   35.68sample/s
+Class car      Iteration 120  32.93sample/s
+Class car acc = 0.8998
+Evaluating class cat: 7/20
+Class cat      Iteration 40   32.91sample/s
+Class cat      Iteration 80   33.84sample/s
+Class cat      Iteration 120  40.76sample/s
+Class cat acc = 0.8501
+Evaluating class chair: 8/20
+Class chair    Iteration 40   34.77sample/s
+Class chair    Iteration 80   37.13sample/s
+Class chair    Iteration 120  40.75sample/s
+Class chair acc = 0.6579
+Evaluating class cow: 9/20
+Class cow      Iteration 40   34.38sample/s
+Class cow      Iteration 80   36.56sample/s
+Class cow      Iteration 120  38.35sample/s
+Class cow acc = 0.8275
+Evaluating class diningtable: 10/20
+Class diningtable Iteration 40   33.31sample/s
+Class diningtable Iteration 80   37.29sample/s
+Class diningtable Iteration 120  40.14sample/s
+Class diningtable acc = 0.9358
+Evaluating class dog: 11/20
+Class dog      Iteration 40   35.36sample/s
+Class dog      Iteration 80   32.88sample/s
+Class dog      Iteration 120  39.70sample/s
+Class dog acc = 0.8275
+Evaluating class horse: 12/20
+Class horse    Iteration 40   31.26sample/s
+Class horse    Iteration 80   33.70sample/s
+Class horse    Iteration 120  39.71sample/s
+Class horse acc = 0.8285
+Evaluating class motorbike: 13/20
+Class motorbike Iteration 40   36.30sample/s
+Class motorbike Iteration 80   35.55sample/s
+Class motorbike Iteration 120  39.93sample/s
+Class motorbike acc = 0.8394
+Evaluating class person: 14/20
+Class person   Iteration 40   37.19sample/s
+Class person   Iteration 80   36.07sample/s
+Class person   Iteration 120  40.91sample/s
+Class person acc = 0.6988
+Evaluating class pottedplant: 15/20
+Class pottedplant Iteration 40   34.93sample/s
+Class pottedplant Iteration 80   46.19sample/s
+Class pottedplant Iteration 120  39.31sample/s
+Class pottedplant acc = 0.9871
+Evaluating class sheep: 16/20
+Class sheep    Iteration 40   27.71sample/s
+Class sheep    Iteration 80   32.24sample/s
+Class sheep    Iteration 120  31.84sample/s
+Class sheep acc = 0.7807
+Evaluating class sofa: 17/20
+Class sofa     Iteration 40   37.52sample/s
+Class sofa     Iteration 80   43.50sample/s
+Class sofa     Iteration 120  37.57sample/s
+Class sofa acc = 0.8257
+Evaluating class train: 18/20
+Class train    Iteration 40   25.14sample/s
+Class train    Iteration 80   33.36sample/s
+Class train    Iteration 120  32.05sample/s
+Class train acc = 0.9776
+Evaluating class tvmonitor: 19/20
+Class tvmonitor Iteration 40   37.60sample/s
+Class tvmonitor Iteration 80   36.45sample/s
+Class tvmonitor Iteration 120  39.77sample/s
+Class tvmonitor acc = 0.9576
+Evaluation complete in 9m 24s
+Matching accuracy
+aeroplane = 0.6505
+bicycle = 0.8132
+bird = 0.7934
+boat = 0.7988
+bottle = 0.8870
+bus = 0.9408
+car = 0.8998
+cat = 0.8501
+chair = 0.6579
+cow = 0.8275
+diningtable = 0.9358
+dog = 0.8275
+horse = 0.8285
+motorbike = 0.8394
+person = 0.6988
+pottedplant = 0.9871
+sheep = 0.7807
+sofa = 0.8257
+train = 0.9776
+tvmonitor = 0.9576
+average = 0.8389
+[1;34mwandb[0m: 
+[1;34mwandb[0m: You can sync this run to the cloud by running:
+[1;34mwandb[0m: [1mwandb sync /scratch/hpc-prf-llmrout/hpcabpo/nmt/wandb/wandb/offline-run-20260923_064837-w73ze1i3[0m
+[1;34mwandb[0m: Find logs at: [1;35m../../../../../../scratch/hpc-prf-llmrout/hpcabpo/nmt/wandb/wandb/offline-run-20260923_064837-w73ze1i3/logs[0m

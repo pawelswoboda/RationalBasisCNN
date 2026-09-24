@@ -11,5 +11,7 @@ setup(
     install_requires=['torch', 'torch_geometric>=2.4', 'numpy', 'scipy'],
     extras_require={'faust': ['plyfile'], 'voc': ['torchvision'],
                     'test': ['pytest']},
-    packages=find_packages(exclude=['tests', 'experiments']),
+    # nmt/ is a separate code base that runs from its own directory; it only
+    # imports rational_cnn and must not be installed as part of it.
+    packages=find_packages(exclude=['tests', 'experiments', 'nmt', 'nmt.*']),
 )
