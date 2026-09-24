@@ -49,7 +49,8 @@ experiments/
   prepare_ncaltech101.py one-time download (5.9 GB, Gehrig et al. split) + pre-processing
   prepare_ncars.py       same for N-Cars (Prophesee .dat; the data is behind a request form)
   bench_kernels.py       layer / basis speed and memory vs. PyG's fused torch_spline_conv kernels
-  backbones.py           --backbone/--rational_basis/--init/... flags shared by the four experiment scripts
+  plot_basis.py          plots learned 2-D basis functions vs. their initialization (paper/figures/)
+  backbones.py           --backbone/--rational_basis/--init/... flags shared by the experiment scripts
   wandb_util.py          optional wandb logging (grad/update/param norms, losses, accuracies)
   prepare_pascal_voc.py  one-time dataset download (annotations via the Internet Archive) + VGG16 features
   prepare_faust.py       one-time placement + processing of MPI-FAUST.zip
@@ -79,7 +80,8 @@ results/
   logs/nmt_spair/        75 NMT job logs (15 configs × 5 seeds), progress bars collapsed
 tests/                   59 pytest tests (basis fits, PCA init, vp gain, conv / kernel
                          equivalences, DGMC, SPair-71k, HPatches, regional basis)
-paper/                   rational_basis_iclr2027.tex / .pdf (build with paper/_build.sh)
+paper/                   rational_basis_iclr2027.tex / .pdf (build with paper/_build.sh);
+                         rational_basis_draft.tex / .pdf, figures/ (learned PascalVOC bases)
 ```
 
 ## Installation
@@ -398,6 +400,15 @@ Welch t-tests: `mv_K8` vs `spline` +2.66 (p = 0.002), `mv_K4` vs `spline`
 (p = 0.03). On N-Cars the rational basis with mean aggregation already beats
 SplineConv with max aggregation (+0.68, p = 0.04), and PointNet is the weakest
 operator.
+
+## Learned basis functions
+
+`python experiments/pascal_voc.py <config flags> --save_model results/models/x.pt`
+stores the trained DGMC model; `python experiments/plot_basis.py
+results/models/x.pt --layers psi_1.convs.0,psi_1.convs.1 --out fig.pdf` plots
+every basis function on the pseudo-coordinate square next to its
+initialization (`paper/figures/basis_voc_{rational_mv_k3,mv_K6,mv_K4}.pdf`).
+`--nmt` reads the `psi_final.pt` written by the NMT training script.
 
 ## Kernel performance
 

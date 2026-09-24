@@ -32,6 +32,8 @@ parser.add_argument('--batch_size', type=int, default=512)
 parser.add_argument('--epochs', type=int, default=15)
 parser.add_argument('--test_samples', type=int, default=1000)
 parser.add_argument('--seed', type=int, default=0)
+parser.add_argument('--save_model', type=str, default='',
+                    help='save the trained model (state_dict + args) here')
 parser.add_argument('--root', type=str, default=DEFAULT_ROOT,
                     help='dataset root containing PascalVOC/')
 add_backbone_args(parser)
@@ -167,3 +169,8 @@ for epoch in range(1, args.epochs + 1):
                 **meter.metrics()}, step=epoch)
 logger.summary({'final_acc': accs[-1], 'best_acc': best})
 logger.finish()
+if args.save_model:
+    torch.save({'state_dict': model.state_dict(), 'args': vars(args),
+                'num_node_features': dataset.num_node_features,
+                'final_acc': accs[-1]}, args.save_model)
+    print(f'Saved model to {args.save_model}')
