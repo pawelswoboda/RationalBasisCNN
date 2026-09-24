@@ -117,6 +117,14 @@ __C.SPLINE_CNN.init_noise = 1e-3
 __C.SPLINE_CNN.vp = False                   # variance-preserving weight init
 __C.SPLINE_CNN.num_bases = 0                # K for multivariate/mlp; 0 = k**d
 
+# torch.compile the two normalized-transformer decoders (dynamic shapes, the
+# padded keypoint count varies per batch). They consist of thousands of tiny
+# kernels, so fusing them roughly halves the step time on a single GPU. Same
+# fp32 maths; results change only by floating-point rounding, i.e. by less
+# than the run-to-run nondeterminism of the atomics in the backward pass.
+# Off by default: the logged runs in ../results/logs/nmt_* did not use it.
+__C.compile = False
+
 # Keep only the newest epoch in <model_dir>/params instead of every epoch.
 # A full sweep otherwise writes ~1.3 GB per epoch per run (model + Adam state).
 __C.keep_last_checkpoint_only = False

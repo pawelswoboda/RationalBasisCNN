@@ -436,6 +436,12 @@ if __name__ == "__main__":
     device = torch.device(f'cuda:{local_rank}')
     
     model = model.to(device)
+    if getattr(cfg, "compile", False):
+        # see cfg.compile in utils/config.py; compiled before the DDP wrap so
+        # the compiled modules are the ones DDP registers hooks on
+        model.n_gpt_decoder = torch.compile(model.n_gpt_decoder, dynamic=True)
+        model.n_gpt_decoder_2 = torch.compile(model.n_gpt_decoder_2, dynamic=True)
+        print("torch.compile: n_gpt_decoder, n_gpt_decoder_2 (dynamic=True)")
     model = DDP(model, device_ids=[local_rank], find_unused_parameters=True)
 
     # criterion = torch.nn.CrossEntropyLoss()

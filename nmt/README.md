@@ -33,11 +33,11 @@ Two switches, both defaulting to the upstream behaviour:
 | file | change |
 |---|---|
 | `model/sconv_archs.py` | `make_conv()` builds `BSplineConv` or `RationalConv` from `cfg.SPLINE_CNN` instead of PyG's `SplineConv(dim=2, kernel_size=5, aggr="max")` |
-| `utils/config.py` | new keys `SPLINE_CNN.*`, `BACKBONE`, `IMAGE_SIZE`, `TRAIN.max_epochs`, `keep_last_checkpoint_only` (defaults reproduce upstream) |
+| `utils/config.py` | new keys `SPLINE_CNN.*`, `BACKBONE`, `IMAGE_SIZE`, `TRAIN.max_epochs`, `keep_last_checkpoint_only`, `compile` (defaults reproduce upstream) |
 | `utils/backbone.py` | `VisualBackbone` (SwinV2 or VGG16 behind one `extract()` interface), a plain `VGG16` class, `backbone_params` on `VGG16_base` |
 | `model/nmt.py` | uses `VisualBackbone`; `feature_align` takes `cfg.IMAGE_SIZE` instead of a hard-coded 384 |
 | `utils/build_graphs.py` | edge pseudo-coordinates divide by `cfg.IMAGE_SIZE` instead of 384 |
-| `train_eval.py` | dataset resize from `cfg.IMAGE_SIZE`; stop after `cfg.TRAIN.max_epochs`; optional pruning of old checkpoints |
+| `train_eval.py` | dataset resize from `cfg.IMAGE_SIZE`; stop after `cfg.TRAIN.max_epochs`; optional pruning of old checkpoints; optional `torch.compile` of the two nGPT decoders (`cfg.compile`) |
 | `data/SPair71k.py` | accepts the official `:` separator in pair-annotation names as well as `_` |
 
 New files: `experiments/{spair,voc}_vgg16.json` (the two base configs),
@@ -117,6 +117,16 @@ Swin layers `timm` would provide are vendored in `utils/timmLayers/`. The
 VGG16 ImageNet weights come from torchvision and are downloaded into
 `$TORCH_HOME` on first use, so pre-fetch them where compute nodes have no
 internet access.
+
+**Speed.** `"compile": true` in a config wraps the two normalized-transformer
+decoders in `torch.compile(dynamic=True)`. They consist of thousands of tiny
+kernels, and fusing them roughly halves the step time on one GPU (measured
+1.8-2.2x on RTX 4090/5090 in the sister port of this code). The maths is
+unchanged fp32; results move only by floating-point rounding, which is below
+the run-to-run nondeterminism of the atomics in the backward pass. The logged
+PC2 runs did not use it (added 2026-09-24 for the local reproduction run,
+`slurm/nmt_local.sbatch`). Checkpoints of a compiled run carry an
+`_orig_mod.` prefix on the decoder keys.
 
 **Basis implementation.** `hpc/env.sh` sets `RATIONAL_BASIS_IMPL=eager`, and
 every logged NMT run used the eager evaluation. The fused Triton kernels in
