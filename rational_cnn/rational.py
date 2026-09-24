@@ -629,8 +629,12 @@ class RationalConv(MessagePassing):
             :math:`\Theta_p` are scaled by :math:`\sqrt{\alpha}` with
             :math:`\alpha = \mathbb{E}_u \sum_p \mathrm{hat}_p(u)^2 /
             \mathbb{E}_u \sum_p B_p(u)^2`, so that the layer produces messages
-            of the same variance as a :class:`SplineConv` at initialisation
-            whatever the basis init. (default: :obj:`False`)
+            whose variance does not depend on the basis shape / init.
+            It equals the variance of a :class:`SplineConv` only for
+            :math:`K = k^D`: the uniform bound :math:`1/\sqrt{K C_{in}}`
+            of the weight init leaves a factor :math:`k^D / K` (e.g. 2 for
+            :math:`K = 4`, :math:`D = 3`, :math:`k = 2`; measured 2.09).
+            (default: :obj:`False`)
         **kwargs: Additional arguments of :class:`RationalBasis1D` /
             :class:`MultivariateRationalBasis`.
     """

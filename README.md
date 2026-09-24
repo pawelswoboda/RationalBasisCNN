@@ -41,6 +41,7 @@ experiments/
   event_utils.py         AEGNN event pre-processing (median 50 ms window, fixed 25k events, beta time)
   prepare_ncaltech101.py one-time download (5.9 GB, Gehrig et al. split) + pre-processing
   prepare_ncars.py       same for N-Cars (Prophesee .dat; the data is behind a request form)
+  bench_kernels.py       layer / basis speed and memory vs. PyG's fused torch_spline_conv kernels
   backbones.py           --backbone/--rational_basis/--init/... flags shared by both scripts
   wandb_util.py          optional wandb logging (grad/update/param norms, losses, accuracies)
   prepare_pascal_voc.py  one-time dataset download (annotations via the Internet Archive) + VGG16 features
@@ -48,6 +49,7 @@ experiments/
 slurm/                   configs.sh (every named configuration), sbatch runners, submit.sh
 results/
   analyze.py             aggregates results/logs into the tables below (mean ± std, Welch t-tests)
+  bench_kernels.txt      output of experiments/bench_kernels.py (RTX 4070 Ti Super, 12.4M edges)
   logs/pascal_voc/       95 training logs (19 configs × 5 seeds)
   logs/faust/            42 training logs (14 configs × 3 seeds)
   logs/ncaltech101/      54 training logs (20 configs, mostly 3 seeds)
@@ -281,6 +283,42 @@ Welch t-tests: `mv_K8` vs `spline` +2.66 (p = 0.002), `mv_K4` vs `spline`
 SplineConv with max aggregation (+0.68, p = 0.04), and PointNet is the weakest
 operator.
 
+## Kernel performance
+
+`experiments/bench_kernels.py` times one AEGNN-scale layer (16 x 25 000
+nodes, 12.4M edges, D = 3, kernel size 2 so K = 8 hats, mean aggregation, no
+root weight / bias) on an RTX 4070 Ti Super; full output in
+`results/bench_kernels.txt`. The rational layers evaluate the basis with the
+Triton kernels of `rational_cnn/triton_basis.py` and aggregate basis-first
+(`rational_cnn/large.py`); PyG's SplineConv uses the fused CUDA kernels of
+`torch_spline_conv` (`--backbone pyg_spline`).
+
+| layer, 32 → 32 channels | fwd | fwd + bwd | peak mem |
+|---|---|---|---|
+| PyG SplineConv, `torch_spline_conv` fused kernels | 97 ms | 624 ms | 5.5 GB |
+| our B-spline, dense basis + basis-first aggregation | 172 ms | 348 ms | 5.2 GB |
+| rational, Triton basis, K=8, degrees (8, 6) | 152 ms | 444 ms | 5.7 GB |
+| rational, Triton basis, K=8, degrees (5, 4) | 151 ms | 435 ms | 5.7 GB |
+| rational, Triton basis, K=4, degrees (8, 6) | 76 ms | 222 ms | 5.1 GB |
+| rational, `torch.compile`d chunked basis, K=8 | 212 ms | 583 ms | 5.7 GB |
+| rational, eager chunked basis, K=8 | 395 ms | 951 ms | 5.7 GB |
+
+| basis only, 12.4M edges | time | peak mem |
+|---|---|---|
+| `torch_spline_conv.spline_basis`, forward (K=8) | 8.9 ms | 1.1 GB |
+| Triton rational basis, forward (K=8, degrees (8, 6)) | 4.4 ms | 0.7 GB |
+| Triton rational basis, forward + backward | 19.2 ms | 1.2 GB |
+
+With the fused kernels the basis evaluation is under 5% of the layer time
+and its degree does not matter; the cost of a rational layer is the
+neighbourhood aggregation, exactly as for B-splines. PyG's forward pass is
+1.6x faster (its `spline_weighting` never forms the per-basis aggregates
+`Y[i, p]`), but its per-edge backward is slow, so a training step of the
+rational K=8 layer is 1.4x faster than PyG's SplineConv (K=4: 2.8x) and on
+par with it at 16 channels. In the N-Caltech101 runs on the same GPU an
+epoch takes 264 s (our B-spline), 316 s (rational K=8, Triton), 164 s
+(rational K=4) and 1006 s (rational K=8, `torch.compile` basis).
+
 ## Method summary
 
 * **Product basis** (`--rational_basis product`): `B_p(u) = Π_d r_{p_d}(u_d)`
@@ -292,8 +330,13 @@ operator.
 * **Initialization** (`--init`): `spline` fits each rational function to its
   B-spline hat (LS → Adam → L-BFGS, float64) so the layer starts as a
   SplineConv; `pca` fits the K leading principal components of the hat basis
-  when `K ≠ k^D`; `--vp` rescales the kernel weights so the message variance
-  matches SplineConv (KAT-style). The denominator is never started at exactly
+  when `K ≠ k^D`; `--vp` rescales the kernel weights by
+  `sqrt(E_u Σ_p hat_p(u)² / E_u Σ_p B_p(u)²)` so that the message variance no
+  longer depends on the shape of the basis (KAT-style). Note that it equals
+  SplineConv's variance only for `K = k^D`: the uniform weight bound
+  `1/sqrt(K·C_in)` leaves a factor `k^D / K` (2 for the K=4 event-camera
+  configs, ≈16 for FAUST K=8, measured 2.09 / 18.1; harmless after the
+  BatchNorm of the AEGNN network but relevant on FAUST). The denominator is never started at exactly
   zero (`∂|Q|/∂b = 0` there would freeze it). `random`, `constant`, `gauss`,
   `cheb` are the ablations of the paper.
 * **Controls**: `--rational_basis mlp` (a filter-generating MLP with the same
