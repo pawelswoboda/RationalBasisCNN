@@ -3,6 +3,7 @@
 \usepackage[margin=1.1in]{geometry}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{booktabs}
+\usepackage{graphicx}
 \usepackage{multirow}
 \usepackage{microtype}
 \usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
@@ -244,6 +245,25 @@ multivariate $(5,4)$, $k{=}5$ (degree control) & 25 & 9.51M & $72.04 \pm 0.94$ &
 \caption{PascalVOC keypoint matching (DGMC), mean $\pm$ std over 5 seeds.}
 \label{tab:pascalvoc}
 \end{table}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{figures/basis_voc_mv_K6.pdf}
+\caption{Learned multivariate rational basis functions of the PascalVOC
+model \code{mv\_K6} ($K=6$, degrees $(8,6)$, PCA-of-hats initialization,
+seed 0) on the pseudo-coordinate square $[0,1]^2$ (Cartesian edge attributes,
+$(0.5,0.5)$ = zero offset). Rows alternate between the initialization
+(the six leading principal components of the $5\times 5$ B-spline hats) and
+the functions after 15 epochs, for both layers of $\psi_1$ and the first
+layer of $\psi_2$. The learned functions keep the overall layout of their
+initialization but sharpen and shift their extrema and develop asymmetric
+side lobes; the $\psi_2$ layer, which operates on the consensus features,
+moves furthest from its initialization. Figures for the hat-initialized
+$K=9$ basis and for $K=4$ are in \code{paper/figures/}
+(\code{experiments/plot\_basis.py}).}
+\label{fig:basis_voc}
+\end{figure}
+
 
 Welch t-tests: mv-hat $k{=}3$ vs SplineCNN $k{=}5$: $+1.76$, $p=0.005$; vs
 product $k{=}3$: $+1.14$, $p=0.032$. $K{=}4$ vs SplineCNN $k{=}5$: $+0.92$,
