@@ -282,6 +282,30 @@ Two caveats when reading these next to the DGMC tables:
   its SwinV2 results nor the DGMC ones. They compare bases within NMT at a
   DGMC-like backbone scale.
 
+## Local 12-epoch runs (2026-09-25)
+
+`../results/logs/nmt_local_12ep/` holds eleven runs made on the group's local
+cluster (RTX 4090/5090, `slurm/nmt_local.sbatch`, `"compile": true`) with the
+configuration of the sweep above but the **full 12-epoch** `long_halving5`
+schedule (`TRAIN.max_epochs: 0`), i.e. epochs 1-7 replay the sweep's recipe
+and epochs 8-12 show how much the 7-epoch budget leaves on the table. Seed 0
+throughout, plus a second spline seed on SPair-71k. Keypoint accuracy (%):
+
+| config | VOC ep 7 | VOC ep 12 | SPair ep 7 | SPair ep 12 |
+|---|---|---|---|---|
+| `spline` | 83.10 | 83.53 | 81.36 (seed 1: 82.26) | 81.46 (seed 1: 82.42) |
+| `rational` | 83.47 | 83.64 | 82.21 | 82.33 |
+| `rational_mv_k3` | 83.02 | 83.26 | 81.66 | 81.81 |
+| `mv_K6` | 82.81 | 82.94 | 81.36 | 81.50 |
+| `mv_K9` | 82.46 | 82.73 | 81.22 | 81.20 |
+
+The epoch-7 values reproduce the PC2 means of the table above within 0.1-0.4
+(the seed-0 SPair-71k `spline` run is an outlier; seed 1 is in the PC2 range).
+The remaining five epochs add 0.1-0.4 points to every configuration and keep
+the ordering, so the ceiling of this recipe is about 83.5-83.7 on PascalVOC
+and 82.3-82.4 on SPair-71k. The logs are the run logs with the per-iteration
+progress lines removed.
+
 ## Tests
 
 ```bash
