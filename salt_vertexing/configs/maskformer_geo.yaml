@@ -1,0 +1,207 @@
+# MaskFormer secondary-vertex reconstruction (Van Stroud et al., EPJC 84
+# (2024) 1020, arXiv:2312.12272) on the public Delphes ttbar dataset
+# (zenodo.org/records/10371998), with a geometric graph-convolution
+# pre-encoder (rational_cnn.salt_encoder.GeometricPreEncoder) in front of the
+# Transformer encoder. The variant is selected with
+#   --model.model.init_args.encoder.init_args.conv={none,spline,rational,mlp}
+# (none = the plain MaskFormer). See salt_vertexing/README.md.
+name: MaskFormer_geo
+
+model:
+  lrs_config:
+    initial: 1e-7
+    max: 5e-4
+    end: 1e-5
+    pct_start: 0.05
+    weight_decay: 1e-5
+
+  model:
+    class_path: salt.models.SaltModel
+    init_args:
+      init_nets:
+        - input_name: tracks
+          dense_config:
+            output_size: &embed_dim 256
+            hidden_layers: [256]
+            activation: &activation ReLU
+
+      encoder:
+        class_path: rational_cnn.salt_encoder.GeometricPreEncoder
+        init_args:
+          embed_dim: *embed_dim
+          conv: rational
+          # columns of data.variables.tracks: eta_rel, phi_rel, d0, z0
+          coord_idx: [3, 2, 0, 1]
+          coord_scale: [1.0, 1.0, 0.01, 0.01]
+          knn_idx: [0, 1]
+          k: 8
+          hidden_dim: 64
+          num_layers: 2
+          kernel_size: 3      # B-spline: 3^4 = 81 hats; rational 'pca' init refers to them
+          num_bases: 9        # rational / mlp bases (free K)
+          degrees: [4, 3]
+          init: pca
+          aggr: mean
+          encoder:
+            class_path: salt.models.Transformer
+            init_args:
+              embed_dim: *embed_dim
+              num_layers: 4
+              out_dim: *embed_dim
+              attn_type: torch-math
+              attn_kwargs:
+                num_heads: 8
+              dense_kwargs:
+                activation: *activation
+              drop_registers: true
+
+      mask_decoder:
+        class_path: salt.models.maskformer.MaskDecoder
+        init_args:
+          num_objects: 5
+          embed_dim: *embed_dim
+          num_layers: 3
+          aux_loss: false
+          md_config:
+            mask_attention: true
+            bidirectional_ca: true
+            n_heads: 8
+          class_net:
+            class_path: salt.models.Dense
+            init_args:
+              input_size: *embed_dim
+              output_size: 3 # b/c/none
+          mask_net:
+            class_path: salt.models.Dense
+            init_args:
+              input_size: *embed_dim
+              output_size: *embed_dim
+          loss_config:
+            num_classes: 2
+            loss_weights:
+              object_class_ce: 2.0
+              mask_ce: 10.0
+              mask_dice: 2.0
+              regression: 2.0
+
+      pool_net:
+        class_path: salt.models.GlobalAttentionPooling
+        init_args: { input_size: *embed_dim }
+
+      tasks:
+        class_path: torch.nn.ModuleList
+        init_args:
+          modules:
+            - class_path: salt.models.ClassificationTask
+              init_args:
+                name: jets_classification
+                input_name: jets
+                label: flavour_label
+                loss:
+                  class_path: torch.nn.CrossEntropyLoss
+                dense_config: &task_dense_config
+                  input_size: *embed_dim
+                  output_size: 3
+                  hidden_layers: [128, 64, 32]
+                  activation: *activation
+
+            - class_path: salt.models.RegressionTask
+              init_args:
+                name: regression
+                targets: ["pt", "Lxy", "mass"]
+                input_name: objects
+                weight: 0.5
+                scaler:
+                  class_path: salt.utils.scalers.RegressionTargetScaler
+                  init_args:
+                    scales:
+                      pt: { op: log, op_scale: 0.2 }
+                      Lxy: { op: log, x_off: 1 }
+                      mass: { op: log, op_scale: 0.1 }
+                loss:
+                  class_path: torch.nn.L1Loss
+                  init_args: { reduction: none }
+                dense_config:
+                  <<: *task_dense_config
+                  output_size: 3
+
+            - class_path: salt.models.ClassificationTask
+              init_args:
+                name: track_origin
+                input_name: tracks
+                label: truth_origin_label
+                class_names: [pileup, primary, fromBC, fromB, fromC, fromS, fromTau, secondary]
+                weight: 0.5
+                loss:
+                  class_path: torch.nn.CrossEntropyLoss
+                  init_args:
+                    weight: [1.0, 25.47, 8.27, 13.17, 8.84, 4.9, 11985.94, 1.25]
+                dense_config:
+                  <<: *task_dense_config
+                  output_size: 8
+                  context_size: *embed_dim
+
+data:
+  input_map:
+    jets: jets
+    tracks: consts
+  global_object: jets
+  variables:
+    jets:
+      - pt
+      - eta
+    tracks: # GeometricPreEncoder.coord_idx refers to this order
+      - d0
+      - z0
+      - phi_rel
+      - eta_rel
+      - dr
+      - pt_frac
+      - charge
+      - signed_2d_ip
+      - signed_3d_ip
+
+  mf_config:
+    object:
+      name: hadrons
+      id_label: hadron_idx
+      class_label: flavour
+      object_classes:
+        b: { raw: 5, mapped: 0 }
+        c: { raw: 4, mapped: 1 }
+        null: { raw: -1, mapped: 2 }
+    constituent:
+      name: tracks
+      id_label: truth_hadron_idx
+
+  train_file: data/vertexing/pp_output_train.h5
+  val_file: data/vertexing/pp_output_val.h5
+  test_file: data/vertexing/pp_output_test_ttbar.h5
+  norm_dict: data/vertexing/norm_dict.yaml
+  class_dict: data/vertexing/class_dict.yaml
+
+  num_train: 2_000_000
+  num_val: 200_000
+  num_test: 500_000
+
+  batch_size: 1000
+  num_workers: 12
+
+trainer:
+  max_epochs: 15
+  accelerator: gpu
+  devices: 1
+  precision: 16-mixed
+  logger: false
+  callbacks:
+    - class_path: salt.callbacks.Checkpoint
+      init_args:
+        monitor_loss: val/loss
+    - class_path: salt.callbacks.PredictionWriter
+      init_args: { write_tracks: True, write_objects: True }
+    - class_path: lightning.pytorch.callbacks.TQDMProgressBar
+      init_args: { refresh_rate: 200 }
+    - class_path: lightning.pytorch.callbacks.ModelSummary
+      init_args: { max_depth: 3 }
+    - class_path: salt.callbacks.MaskformerMetrics
+    - class_path: rational_cnn.salt_metrics.MetricsCSV
