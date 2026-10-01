@@ -1,10 +1,10 @@
 # MaskFormer secondary-vertex reconstruction (Van Stroud et al., EPJC 84
 # (2024) 1020, arXiv:2312.12272) on the public Delphes ttbar dataset
 # (zenodo.org/records/10371998), with a geometric graph-convolution
-# pre-encoder (rational_cnn.salt_encoder.GeometricPreEncoder) in front of the
+# pre-encoder (maskformer_geo.GeometricPreEncoder) in front of the
 # Transformer encoder. The variant is selected with
-#   --model.model.init_args.encoder.init_args.conv={none,spline,rational,mlp}
-# (none = the plain MaskFormer). See salt_vertexing/README.md.
+#   --model.model.init_args.encoder.init_args.conv={none,spline,rational}
+# (none = the plain MaskFormer). See vertexing/README.md.
 name: MaskFormer_geo
 
 model:
@@ -26,7 +26,7 @@ model:
             activation: &activation ReLU
 
       encoder:
-        class_path: rational_cnn.salt_encoder.GeometricPreEncoder
+        class_path: maskformer_geo.GeometricPreEncoder
         init_args:
           embed_dim: *embed_dim
           conv: rational
@@ -38,7 +38,7 @@ model:
           hidden_dim: 64
           num_layers: 2
           kernel_size: 3      # B-spline: 3^4 = 81 hats; rational 'pca' init refers to them
-          num_bases: 9        # rational / mlp bases (free K)
+          num_bases: 9        # rational bases (free K)
           degrees: [4, 3]
           init: pca
           aggr: mean
@@ -204,4 +204,4 @@ trainer:
     - class_path: lightning.pytorch.callbacks.ModelSummary
       init_args: { max_depth: 3 }
     - class_path: salt.callbacks.MaskformerMetrics
-    - class_path: rational_cnn.salt_metrics.MetricsCSV
+    - class_path: maskformer_geo.MetricsCSV

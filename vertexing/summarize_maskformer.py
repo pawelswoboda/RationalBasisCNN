@@ -1,8 +1,8 @@
 """Summarise SALT MaskFormer runs (metrics.csv written by
-rational_cnn.salt_metrics.MetricsCSV).
+maskformer_geo.MetricsCSV).
 
-    python salt_vertexing/summarize.py salt_vertexing/runs/<dir> [...]
-    python salt_vertexing/summarize.py --history salt_vertexing/runs/<run>
+    python vertexing/summarize_maskformer.py vertexing/runs/<dir> [...]
+    python vertexing/summarize_maskformer.py --history vertexing/runs/<run>
 
 Each argument is a run directory or a directory of run directories. Per run,
 the row of the epoch with the lowest val/loss is reported (as SALT's
@@ -42,7 +42,7 @@ def variant(run):
     conv = a.get('conv', enc['class_path'].rsplit('.', 1)[-1])
     if conv == 'spline':
         conv += ' k={}'.format(a['kernel_size'])
-    elif conv in ['rational', 'mlp']:
+    elif conv == 'rational':
         conv += ' K={}'.format(a['num_bases'])
     return conv
 

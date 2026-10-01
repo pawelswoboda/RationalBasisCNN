@@ -1,10 +1,13 @@
-"""Tests of rational_cnn.salt_encoder (need the `salt` package, see
-salt_vertexing/README.md)."""
+"""Tests of vertexing/maskformer_geo.py (need the `salt` package, see
+vertexing/README.md)."""
+import sys
+from pathlib import Path
 import pytest
 import torch
 
 salt_models = pytest.importorskip('salt.models')
-from rational_cnn.salt_encoder import GeometricPreEncoder, knn_edges  # noqa
+sys.path.insert(0, str(Path(__file__).parents[1]))
+from maskformer_geo import GeometricPreEncoder, knn_edges  # noqa
 
 DEV = 'cuda' if torch.cuda.is_available() else 'cpu'
 B, L, C = 4, 12, 32
@@ -40,7 +43,7 @@ def test_knn_edges():
     assert ei.size(1) == 5 * 4 + 2 * 12 * 4
 
 
-@pytest.mark.parametrize('conv', ['none', 'spline', 'rational', 'mlp'])
+@pytest.mark.parametrize('conv', ['none', 'spline', 'rational'])
 def test_identity_at_init_and_backward(conv):
     x, raw, pad = make_inputs()
     m, enc = make(conv)

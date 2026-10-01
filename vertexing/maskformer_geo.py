@@ -10,13 +10,20 @@ pairwise *differences* of geometric track variables (e.g. eta, phi, d0, z0).
 The result is added to the track embeddings through a zero-initialised
 projection, so at initialisation the model is exactly the wrapped encoder.
 
-Used by the MaskFormer secondary-vertex configs in ``salt_vertexing/``.
+Single file of the MaskFormer approach: the pre-encoder and a callback
+writing the epoch metrics to ``metrics.csv`` (SALT's CLI only wires up a Comet
+logger). Config: ``vertexing/configs/maskformer_geo.yaml``; SALT imports this
+module as ``maskformer_geo``, so run with ``PYTHONPATH=vertexing``.
 """
+import csv
+from pathlib import Path
+
 import torch
 from torch import nn
 
-from .bspline import BSplineConv
-from .rational import RationalConv
+from lightning import Callback
+
+from rational_cnn import BSplineConv, RationalConv
 
 
 def knn_edges(coords, pad_mask, k):
@@ -65,8 +72,8 @@ class GeometricPreEncoder(nn.Module):
             differences).
             (default: ``1.0`` for every coordinate)
         conv: ``'spline'`` (B-spline hats, SplineCNN), ``'rational'``
-            (multivariate rational basis), ``'mlp'`` (MLP basis, control) or
-            ``'none'`` (identity, i.e. the plain wrapped encoder).
+            (multivariate rational basis) or ``'none'`` (identity, i.e. the
+            plain wrapped encoder).
         hidden_dim: Width of the graph convolutions.
         num_layers: Number of graph convolutions (each residual).
         k: kNN neighbours per track.
@@ -91,7 +98,7 @@ class GeometricPreEncoder(nn.Module):
                  init: str = 'pca', aggr: str = 'mean',
                  input_name: str = 'tracks'):
         super().__init__()
-        assert conv in ['spline', 'rational', 'mlp', 'none']
+        assert conv in ['spline', 'rational', 'none']
         self.encoder = encoder
         self.conv_type = conv
         self.input_name = input_name
@@ -114,13 +121,10 @@ class GeometricPreEncoder(nn.Module):
             if conv == 'spline':
                 c = BSplineConv(hidden_dim, hidden_dim, D, kernel_size,
                                 aggr=aggr)
-            elif conv == 'rational':
+            else:
                 c = RationalConv(hidden_dim, hidden_dim, D, kernel_size,
                                  basis='multivariate', num_bases=num_bases,
                                  degrees=tuple(degrees), init=init, aggr=aggr)
-            else:
-                c = RationalConv(hidden_dim, hidden_dim, D, kernel_size,
-                                 basis='mlp', num_bases=num_bases, aggr=aggr)
             self.convs.append(c)
             self.norms.append(nn.LayerNorm(hidden_dim))
         self.lin_out = nn.Linear(hidden_dim, embed_dim)
@@ -161,3 +165,27 @@ class GeometricPreEncoder(nn.Module):
             else:
                 x = xt
         return self.encoder(x, pad_mask, inputs=inputs, **kwargs)
+
+
+class MetricsCSV(Callback):
+    r"""Appends one row of ``trainer.callback_metrics`` per validation epoch to
+    ``<default_root_dir>/metrics.csv``."""
+    def __init__(self, filename: str = 'metrics.csv'):
+        self.filename = filename
+        self.rows = []
+
+    def on_validation_epoch_end(self, trainer, module):
+        if trainer.sanity_checking or trainer.global_rank != 0:
+            return
+        row = {'epoch': trainer.current_epoch, 'step': trainer.global_step}
+        for k, v in trainer.callback_metrics.items():
+            row[k] = float(v)
+        self.rows.append(row)
+        keys = sorted({k for r in self.rows for k in r},
+                      key=lambda k: (k not in ('epoch', 'step'), k))
+        path = Path(trainer.default_root_dir) / self.filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, 'w', newline='') as f:
+            w = csv.DictWriter(f, fieldnames=keys)
+            w.writeheader()
+            w.writerows(self.rows)
