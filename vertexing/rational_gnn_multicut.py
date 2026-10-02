@@ -2,18 +2,22 @@ r"""Secondary-vertex reconstruction as edge classification + multicut with a
 pure rational-basis graph neural network. Single file: data, model, training,
 clustering and evaluation.
 
-Per jet, the tracks form a complete graph. Every edge carries D = 5
+Per jet, the tracks form a complete graph. Every edge carries D = 7
 pseudo-coordinates from the geometry of the track pair (jet frame, straight
 transverse lines):
 
-    d_eta, d_phi             angular separation (antisymmetric)
+    sin d_theta, 1 - cos d_theta,
+    sin d_phi,   1 - cos d_phi
+                             sin/cos encoding of the differences of the polar
+                             angle (from eta) and the azimuth
     L_ij                     signed displacement along the jet axis of the
                              crossing point of the two tracks in the
                              transverse plane (a 2-track vertex candidate)
     dz_ij                    z mismatch of the two tracks at that crossing
     d_z0                     longitudinal impact-parameter difference
 
-each squashed to [0, 1] by u = 1/2 + 1/2 tanh(asinh(delta / s) / 2). Every
+each squashed to [0, 1] by u = 1/2 + 1/2 tanh(asinh(delta / s) / 2) (the
+non-negative 1 - cos terms by u = tanh(asinh(delta / s) / 2)). Every
 layer is a continuous-kernel convolution with K learnable multivariate
 rational (safe-Pade) basis functions of u (rational_cnn.MultivariateRationalBasis,
 free K, PCA-of-hats init):
@@ -70,7 +74,9 @@ ORIGINS = ['pileup', 'primary', 'fromBC', 'fromB', 'fromC', 'fromS',
 HF = [2, 3, 4]          # fromBC, fromB, fromC
 FROM_B = [2, 3]
 CRITERIA = {'perfect': (1.0, 1.0), 'loose': (0.5, 0.5)}
-PAIR_NAMES = ['d_eta', 'd_phi', 'L_ij', 'dz_ij', 'd_z0']
+PAIR_NAMES = ['sin_dtheta', '1-cos_dtheta', 'sin_dphi', '1-cos_dphi', 'L_ij',
+              'dz_ij', 'd_z0']
+ONE_SIDED = [1, 3]      # 1 - cos >= 0: squashed onto [0, 1) instead of [0, 1]
 
 
 # --------------------------------------------------------------------------
@@ -134,7 +140,7 @@ def loader(path, num_jets, batch_size, workers, shuffle, norm_dict):
 
 
 def pair_geometry(geo, scales):
-    r"""Pseudo-coordinates ``[B, L, L, 5]`` in ``[0, 1]`` of every track pair
+    r"""Pseudo-coordinates ``[B, L, L, 7]`` in ``[0, 1]`` of every track pair
     (see the module docstring); ``geo`` holds the raw d0, z0, phi_rel,
     eta_rel and jet eta of every track."""
     d0, z0, phi, eta, jet_eta = geo.unbind(-1)
@@ -161,15 +167,22 @@ def pair_geometry(geo, scales):
     cot = torch.sinh(eta + jet_eta)                       # dz / ds_T
     z_i = z0[:, :, None] + ti * cot[:, :, None]
     z_j = z0[:, None, :] + tj * cot[:, None, :]
+    theta = 2 * torch.atan(torch.exp(-(eta + jet_eta)))  # polar angle
+    dtheta = theta[:, None, :] - theta[:, :, None]
+    dphi = phi[:, None, :] - phi[:, :, None]
     delta = torch.stack([
-        eta[:, None, :] - eta[:, :, None],
-        phi[:, None, :] - phi[:, :, None],
+        dtheta.sin(), 1 - dtheta.cos(),
+        dphi.sin(), 1 - dphi.cos(),
         L_ij,
         z_j - z_i,
         z0[:, None, :] - z0[:, :, None],
     ], -1)
     s = torch.as_tensor(scales, dtype=delta.dtype, device=delta.device)
-    return 0.5 + 0.5 * torch.tanh(torch.asinh(delta / s) / 2)
+    t = torch.tanh(torch.asinh(delta / s) / 2)
+    one_sided = torch.zeros(len(PAIR_NAMES), dtype=torch.bool,
+                            device=delta.device)
+    one_sided[ONE_SIDED] = True
+    return torch.where(one_sided, t, 0.5 + 0.5 * t)
 
 
 def edge_targets(batch, label):
@@ -201,10 +214,12 @@ class DenseRationalConv(nn.Module):
     on a dense (padded, complete per jet) graph:
     ``x'_i = Theta_root x_i + sum_j A_ij sum_p B_p(u_ij) Theta_p x_j + b``
     with ``A`` the mean-aggregation matrix over valid ``j != i``."""
-    def __init__(self, channels, dim, num_bases, kernel_size, degrees, init):
+    def __init__(self, channels, dim, num_bases, kernel_size, degrees, init,
+                 grid_size=None):
         super().__init__()
         self.basis = MultivariateRationalBasis(
-            dim, kernel_size, degrees=degrees, init=init, num_bases=num_bases)
+            dim, kernel_size, degrees=degrees, init=init, num_bases=num_bases,
+            grid_size=grid_size)
         K = num_bases
         self.weight = nn.Parameter(torch.empty(K, channels, channels))
         self.root = nn.Parameter(torch.empty(channels, channels))
@@ -227,10 +242,11 @@ class RationalEdgeHead(nn.Module):
     r"""``logit_ij = sum_p B_p(u_ij) [(U h_i)^T diag(w_p) (V h_j) + beta_p]
     + b``, symmetrised."""
     def __init__(self, channels, rank, dim, num_bases, kernel_size, degrees,
-                 init):
+                 init, grid_size=None):
         super().__init__()
         self.basis = MultivariateRationalBasis(
-            dim, kernel_size, degrees=degrees, init=init, num_bases=num_bases)
+            dim, kernel_size, degrees=degrees, init=init, num_bases=num_bases,
+            grid_size=grid_size)
         self.U = nn.Linear(channels, rank, bias=False)
         self.V = nn.Linear(channels, rank, bias=False)
         self.w = nn.Parameter(torch.randn(num_bases, rank) / math.sqrt(rank))
@@ -247,18 +263,19 @@ class RationalEdgeHead(nn.Module):
 
 class RationalVertexGNN(nn.Module):
     def __init__(self, in_dim, hidden=128, layers=4, num_bases=12,
-                 kernel_size=3, degrees=(4, 3), init='pca', rank=32, dim=5):
+                 kernel_size=2, degrees=(4, 3), init='pca', rank=32, dim=7,
+                 grid_size=5):
         super().__init__()
         self.embed = nn.Sequential(nn.Linear(in_dim, hidden), nn.ReLU(),
                                    nn.Linear(hidden, hidden))
         self.convs = nn.ModuleList([
             DenseRationalConv(hidden, dim, num_bases, kernel_size, degrees,
-                              init) for _ in range(layers)])
+                              init, grid_size) for _ in range(layers)])
         self.norms = nn.ModuleList([nn.LayerNorm(hidden)
                                     for _ in range(layers)])
         self.norm = nn.LayerNorm(hidden)
         self.edge = RationalEdgeHead(hidden, rank, dim, num_bases,
-                                     kernel_size, degrees, init)
+                                     kernel_size, degrees, init, grid_size)
         self.origin = nn.Sequential(nn.Linear(hidden, hidden), nn.ReLU(),
                                     nn.Linear(hidden, len(ORIGINS)))
 
@@ -431,7 +448,8 @@ def build_model(args):
         len(TRACK_VARS) + len(JET_VARS), hidden=args.hidden,
         layers=args.layers, num_bases=args.num_bases,
         kernel_size=args.kernel_size, degrees=tuple(args.degrees),
-        init=args.init, rank=args.rank, dim=len(PAIR_NAMES))
+        init=args.init, rank=args.rank, dim=len(PAIR_NAMES),
+        grid_size=getattr(args, 'grid_size', None))
 
 
 def train(args):
@@ -446,7 +464,9 @@ def train(args):
                         args.workers, True, args.norm_dict)
     val_data = loader(args.val_file, args.num_val, args.batch_size,
                       args.workers, False, args.norm_dict)
-    model = build_model(args).to(device)
+    with device:  # the PCA-init basis fits run on the GPU (minutes on a CPU)
+        model = build_model(args)
+    model = model.to(device)
     n_params = sum(p.numel() for p in model.parameters())
     print(model)
     print('parameters: {:,}'.format(n_params))
@@ -503,7 +523,9 @@ def evaluate_ckpt(args):
     device = torch.device(args.device)
     state = torch.load(args.ckpt, map_location='cpu', weights_only=False)
     targs = argparse.Namespace(**state['args'])
-    model = build_model(targs).to(device)
+    # the weights are loaded below: skip the (slow, CPU) PCA-init basis fit
+    model = build_model(argparse.Namespace(**{**state['args'],
+                                              'init': 'random'})).to(device)
     model.load_state_dict(state['model'])
     weights = origin_weights(targs.class_dict,
                              targs.origin_weight_cap).to(device)
@@ -536,15 +558,17 @@ def main():
                    default='vertex',
                    help='edge truth: same truth_vertex_idx or same '
                         'truth_hadron_idx (pileup / unlinked: no positives)')
-    t.add_argument('--scales', type=float, nargs=5,
-                   default=[0.1, 0.1, 0.5, 0.1, 0.1],
+    t.add_argument('--scales', type=float, nargs=7,
+                   default=[0.1, 0.005, 0.1, 0.005, 0.5, 0.1, 0.1],
                    help='pseudo-coordinate scales for ' + ', '.join(PAIR_NAMES)
-                        + ' (rad, rad, mm, mm, mm)')
+                        + ' (-, -, -, -, mm, mm, mm)')
     t.add_argument('--hidden', type=int, default=128)
     t.add_argument('--layers', type=int, default=4)
     t.add_argument('--num_bases', type=int, default=12)
-    t.add_argument('--kernel_size', type=int, default=3,
-                   help='hat grid (kernel_size^5) the PCA init refers to')
+    t.add_argument('--kernel_size', type=int, default=2,
+                   help='hat grid (kernel_size^7) the PCA init refers to')
+    t.add_argument('--grid_size', type=int, default=5,
+                   help='points per dimension of the PCA-init fit grid')
     t.add_argument('--degrees', type=int, nargs=2, default=[4, 3])
     t.add_argument('--init', default='pca')
     t.add_argument('--rank', type=int, default=32)

@@ -25,25 +25,30 @@ up to 50 tracks and up to 5 truth b/c hadrons, each track linked to its hadron
 
 * **Graph**: complete per jet (median 16, at most 50 tracks), dense
   `[B, L, L]` tensors.
-* **Pseudo-coordinates** (D = 5) from the geometry of each track pair in the
+* **Pseudo-coordinates** (D = 7) from the geometry of each track pair in the
   jet frame, tracks as straight lines in the transverse plane:
-  Δη, Δφ, the signed position `L_ij` along the jet axis of the crossing point
-  of the two tracks (a 2-track vertex candidate), the z mismatch `dz_ij` of
-  the two tracks at that crossing, Δz0; squashed by
-  `u = ½ + ½ tanh(asinh(Δ/s)/2)` with s = (0.1, 0.1, 0.5 mm, 0.1 mm, 0.1 mm).
+  sin/cos encoding of the polar-angle (from η) and azimuth differences —
+  sin Δθ, 1 − cos Δθ, sin Δφ, 1 − cos Δφ —, the signed position `L_ij` along
+  the jet axis of the crossing point of the two tracks (a 2-track vertex
+  candidate), the z mismatch `dz_ij` of the two tracks at that crossing, Δz0.
+  Squashed by `u = ½ + ½ tanh(asinh(Δ/s)/2)` (the non-negative 1 − cos terms
+  by `u = tanh(asinh(Δ/s)/2)`, so that the small in-jet angles keep their
+  resolution), s = (0.1, 0.005, 0.1, 0.005, 0.5 mm, 0.1 mm, 0.1 mm).
   On validation jets, same-hadron pairs cross a median 3.9 mm downstream
   (90 % quantile 83 mm), primary-vertex and pileup pairs at L ≈ 0.
 * **Layers**: 4 × `h ← h + RationalConv(ReLU(LN(h)), u)`, width 128, K = 12
-  multivariate safe-Padé bases (degrees 4/3, PCA-of-hats init on a 3⁵ grid),
-  mean aggregation; the free K is what makes D = 5 affordable (a B-spline grid
-  would need 3⁵ = 243 hats per layer).
+  multivariate safe-Padé bases (total degrees 4/3: 330 + 119 coefficients
+  each), initialised to the 12 leading principal components of the 2⁷
+  multilinear hats (fit on a 5⁷ grid, on the GPU: 14 s, > 20 min on the local
+  CPU), mean aggregation; the free K is what makes D = 7 affordable (a
+  B-spline grid would need ≥ 2⁷ = 128 hats per layer).
 * **Edge classifier**, also a rational kernel:
   `logit_ij = Σ_p B_p(u_ij) [(U h_i)ᵀ diag(w_p) (V h_j) + β_p] + b`, rank 32,
   symmetrised. Plus a per-track origin head.
 * **Loss**: BCE over track pairs (`--edge_label vertex`: same
   `truth_vertex_idx`, default; `hadron`: same `truth_hadron_idx`) + 0.5 ×
   origin cross entropy (class_dict weights capped at 50).
-* 0.9 M parameters, ~13 k jets/s training on the RTX 4070 Ti Super.
+* 0.9 M parameters, ~8 k jets/s training on the RTX 4070 Ti Super.
 
 ### `transformer_edge_multicut.py`
 

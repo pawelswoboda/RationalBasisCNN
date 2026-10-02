@@ -67,21 +67,32 @@ def test_metrics_oracle(mod, batch):
 
 
 def test_pair_geometry_symmetry(batch):
-    u = rgnn.pair_geometry(batch['geo'], [0.1, 0.1, 0.5, 0.1, 0.1])
+    u = rgnn.pair_geometry(batch['geo'], [0.1, 0.005, 0.1, 0.005, 0.5, 0.1,
+                                          0.1])
     m = rgnn.pair_mask(batch['mask'])
+    assert u.shape[-1] == len(rgnn.PAIR_NAMES) == 7
     assert ((u >= 0) & (u <= 1)).all()
     ut = u.transpose(1, 2)
-    for k in (0, 1, 3, 4):  # antisymmetric differences: u_ij + u_ji = 1
+    for k in (0, 2, 5, 6):  # sin, dz, d_z0 antisymmetric: u_ij + u_ji = 1
         assert torch.allclose((u[..., k] + ut[..., k])[m], torch.tensor(1.),
                               atol=1e-5)
-    assert torch.allclose(u[..., 2][m], ut[..., 2][m], atol=1e-4)  # L_ij
+    for k in (1, 3, 4):     # 1 - cos, L_ij symmetric
+        assert torch.allclose(u[..., k][m], ut[..., k][m], atol=1e-4)
+    # sin^2 + cos^2 = 1 survives the encoding (invert the squashing)
+    def raw(k, s, one_sided):
+        t = u[..., k] if one_sided else 2 * u[..., k] - 1
+        return torch.sinh(2 * torch.atanh(t.double().clamp(max=1 - 1e-9))) * s
+    sin, omc = raw(2, 0.1, False), raw(3, 0.005, True)
+    assert torch.allclose((sin ** 2 + (1 - omc) ** 2)[m],
+                          torch.tensor(1., dtype=torch.double), atol=1e-3)
 
 
 def small_args(mod):
     p = dict(hidden=16, layers=1)
     if mod is rgnn:
         p.update(num_bases=4, kernel_size=2, degrees=[2, 1], init='pca',
-                 rank=4, scales=[0.1, 0.1, 0.5, 0.1, 0.1])
+                 rank=4, grid_size=3,
+                 scales=[0.1, 0.005, 0.1, 0.005, 0.5, 0.1, 0.1])
     else:
         p.update(heads=2)
     return argparse.Namespace(edge_label='vertex', **p)
